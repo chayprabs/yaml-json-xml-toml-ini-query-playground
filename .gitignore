@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+playwright-report
+test-results
+.tools
+public/yq.wasm
+public/wasm_exec.js
