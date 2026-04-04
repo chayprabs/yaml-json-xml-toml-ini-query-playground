@@ -27,6 +27,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${display.variable} ${mono.variable}`}>
+      <head>
+        <link
+          rel="preload"
+          href="./yq.wasm"
+          as="fetch"
+          type="application/wasm"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="font-[family-name:var(--font-display)] antialiased">
         <Script src="./wasm_exec.js" strategy="beforeInteractive" />
         {children}

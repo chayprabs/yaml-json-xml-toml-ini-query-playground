@@ -47,3 +47,32 @@ body {
 .panel-grid {
   background-size: 24px 24px;
 }
+
+.hljs {
+  background: transparent;
+  color: #f8f2e8;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-title {
+  color: #f6bf76;
+}
+
+.hljs-string,
+.hljs-template-variable {
+  color: #d0f2d2;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-symbol {
+  color: #9bd6ff;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: rgba(248, 242, 232, 0.5);
+}

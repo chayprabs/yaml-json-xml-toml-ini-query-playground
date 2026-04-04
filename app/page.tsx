@@ -34,6 +34,24 @@ export default function Home() {
             </div>
           </div>
         </div>
+        <div className="mt-8 grid gap-3 rounded-2xl border border-ink/10 bg-[#17141f] p-5 text-sm text-paper/75 sm:grid-cols-4">
+          <div>
+            <p className="font-semibold text-paper">Shareable</p>
+            <p>Input, expression, formats, and toggles sync into the URL hash.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-paper">Fast Feedback</p>
+            <p>Auto-run is debounced, and manual runs work with Cmd/Ctrl+Enter.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-paper">Output Controls</p>
+            <p>Copy results, toggle unwrap scalar, no-doc, and pretty print.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-paper">100% Browser</p>
+            <p>All yq processing stays in WebAssembly with zero backend services.</p>
+          </div>
+        </div>
       </section>
 
       <YqPlayground />

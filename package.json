@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:all": "npm run build:wasm && npm run build",
     "start": "next start",
     "build:wasm": "bash scripts/build-wasm.sh",
     "phase1:audit": "node scripts/phase1-audit.cjs",
@@ -12,7 +13,7 @@
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "test:e2e": "playwright test",
-    "test:go": ".\\.tools\\go\\bin\\go.exe test ./wasm"
+    "test:go": "node scripts/run-go.cjs test ./wasm"
   },
   "dependencies": {
     "highlight.js": "^11.11.1",

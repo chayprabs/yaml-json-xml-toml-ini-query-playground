@@ -27,12 +27,12 @@ if [[ "$GO_BIN" == *.exe ]]; then
     ROOT_DIR_WIN="$(wslpath -w "$ROOT_DIR")"
   fi
 
-  powershell.exe -NoProfile -Command "\$env:GOOS='js'; \$env:GOARCH='wasm'; & '$GO_BIN_WIN' build -o '$ROOT_DIR_WIN\\public\\yq.wasm' ./wasm"
+  powershell.exe -NoProfile -Command "\$env:GOOS='js'; \$env:GOARCH='wasm'; & '$GO_BIN_WIN' build -ldflags='-s -w' -o '$ROOT_DIR_WIN\\public\\yq.wasm' ./wasm"
 
   GOROOT_WIN="$("$GO_BIN" env GOROOT | tr -d '\r')"
   powershell.exe -NoProfile -Command "\$goroot='$GOROOT_WIN'; \$root='$ROOT_DIR_WIN'; \$candidates=@((Join-Path \$goroot 'lib\\wasm\\wasm_exec.js'), (Join-Path \$goroot 'misc\\wasm\\wasm_exec.js')); \$src=\$candidates | Where-Object { Test-Path \$_ } | Select-Object -First 1; if (-not \$src) { throw \"wasm_exec.js not found under GOROOT: \$goroot\" }; Copy-Item -Path \$src -Destination (Join-Path \$root 'public\\wasm_exec.js') -Force"
 else
-  GOOS=js GOARCH=wasm "$GO_BIN" build -o "$ROOT_DIR/public/yq.wasm" ./wasm
+  GOOS=js GOARCH=wasm "$GO_BIN" build -ldflags="-s -w" -o "$ROOT_DIR/public/yq.wasm" ./wasm
   GOROOT="$("$GO_BIN" env GOROOT)"
   GOROOT_PATH="${GOROOT//\\//}"
   WASM_EXEC_SRC="$GOROOT_PATH/lib/wasm/wasm_exec.js"
@@ -54,5 +54,14 @@ if [[ ! -s "$ROOT_DIR/public/yq.wasm" ]]; then
   echo "public/yq.wasm was not created or is empty." >&2
   exit 1
 fi
+
+if command -v wasm-opt >/dev/null 2>&1; then
+  wasm-opt -Oz -o "$ROOT_DIR/public/yq.wasm" "$ROOT_DIR/public/yq.wasm"
+  echo "Optimized public/yq.wasm with wasm-opt"
+else
+  echo "wasm-opt not found; skipping optional optimization pass."
+fi
+
+node "$ROOT_DIR/scripts/gzip-file.cjs" "$ROOT_DIR/public/yq.wasm"
 
 echo "Built $ROOT_DIR/public/yq.wasm"
