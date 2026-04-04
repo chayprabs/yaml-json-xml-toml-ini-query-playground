@@ -21,7 +21,7 @@ test('evaluates json input after switching format', async ({ page }) => {
 });
 
 test('shows an error box for invalid expressions', async ({ page }) => {
-  await page.getByTestId('expression-input').fill('.foo | |');
+  await page.getByTestId('expression-input').fill('.foo | [');
   await page.getByTestId('run-button').click();
 
   await expect(page.getByTestId('error-box')).toContainText('bad expression');

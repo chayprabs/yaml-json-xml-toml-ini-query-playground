@@ -4,13 +4,12 @@ package main
 
 import "syscall/js"
 
-func jsError(message string) js.Error {
-	return js.Error{Value: js.Global().Get("Error").New(message)}
-}
-
-func yqEvaluate(_ js.Value, args []js.Value) any {
+func yqEvaluateBridge(_ js.Value, args []js.Value) any {
 	if len(args) != 4 {
-		panic(jsError("window.yqEvaluate expects exactly 4 arguments: input, expression, inputFormat, outputFormat"))
+		return map[string]any{
+			"ok":    false,
+			"error": "window.yqEvaluate expects exactly 4 arguments: input, expression, inputFormat, outputFormat",
+		}
 	}
 
 	result, err := evaluate(
@@ -20,13 +19,32 @@ func yqEvaluate(_ js.Value, args []js.Value) any {
 		args[3].String(),
 	)
 	if err != nil {
-		panic(jsError(err.Error()))
+		return map[string]any{
+			"ok":    false,
+			"error": err.Error(),
+		}
 	}
 
-	return result
+	return map[string]any{
+		"ok":    true,
+		"value": result,
+	}
 }
 
 func main() {
-	js.Global().Set("yqEvaluate", js.FuncOf(yqEvaluate))
+	bridge := js.FuncOf(yqEvaluateBridge)
+	js.Global().Set("__yqEvaluateBridge", bridge)
+
+	wrapperFactory := js.Global().Get("Function").New("bridge", `
+		return function(input, expression, inputFormat, outputFormat) {
+			const result = bridge(input, expression, inputFormat, outputFormat);
+			if (!result || !result.ok) {
+				const message = result && typeof result.error === "string" ? result.error : "Unknown yq evaluation error.";
+				throw new Error(message);
+			}
+			return typeof result.value === "string" ? result.value : String(result.value ?? "");
+		};
+	`)
+	js.Global().Set("yqEvaluate", wrapperFactory.Invoke(bridge))
 	select {}
 }
