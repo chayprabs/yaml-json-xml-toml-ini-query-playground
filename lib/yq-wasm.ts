@@ -1,10 +1,12 @@
-type Format = 'yaml' | 'json' | 'xml' | 'csv' | 'toml' | 'props';
-type InputFormat = Exclude<Format, 'props'>;
+type Format = "yaml" | "json" | "xml" | "csv" | "toml" | "props";
+type InputFormat = Exclude<Format, "props">;
 
 type GoRuntime = {
   importObject: WebAssembly.Imports;
   run(instance: WebAssembly.Instance): Promise<void>;
 };
+
+const EVALUATION_TIMEOUT_MS = 8_000;
 
 declare global {
   interface Window {
@@ -25,11 +27,11 @@ function normalizeError(error: unknown): Error {
     return error;
   }
 
-  if (typeof error === 'string') {
+  if (typeof error === "string") {
     return new Error(error);
   }
 
-  return new Error('Unknown yq WASM error.');
+  return new Error("Unknown yq WASM error.");
 }
 
 function resolveAssetPath(fileName: string): string {
@@ -37,15 +39,17 @@ function resolveAssetPath(fileName: string): string {
 }
 
 async function ensureRuntimeScript(): Promise<void> {
-  if (typeof window === 'undefined') {
-    throw new Error('yq can only be initialized in the browser.');
+  if (typeof window === "undefined") {
+    throw new Error("yq can only be initialized in the browser.");
   }
 
   if (window.Go) {
     return;
   }
 
-  const existingScript = document.querySelector<HTMLScriptElement>('script[data-yq-wasm-exec="true"]');
+  const existingScript = document.querySelector<HTMLScriptElement>(
+    'script[data-yq-wasm-exec="true"]',
+  );
   if (existingScript) {
     await new Promise<void>((resolve, reject) => {
       if (window.Go) {
@@ -53,36 +57,45 @@ async function ensureRuntimeScript(): Promise<void> {
         return;
       }
 
-      existingScript.addEventListener('load', () => resolve(), { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('Failed to load wasm_exec.js.')), {
-        once: true,
-      });
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load wasm_exec.js.")),
+        {
+          once: true,
+        },
+      );
     });
     return;
   }
 
   await new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = resolveAssetPath('wasm_exec.js');
+    const script = document.createElement("script");
+    script.src = resolveAssetPath("wasm_exec.js");
     script.async = true;
-    script.dataset.yqWasmExec = 'true';
+    script.dataset.yqWasmExec = "true";
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load wasm_exec.js.'));
+    script.onerror = () => reject(new Error("Failed to load wasm_exec.js."));
     document.head.appendChild(script);
   });
 }
 
-async function instantiateModule(importObject: WebAssembly.Imports): Promise<WebAssembly.Instance> {
-  const url = resolveAssetPath('yq.wasm');
+async function instantiateModule(
+  importObject: WebAssembly.Imports,
+): Promise<WebAssembly.Instance> {
+  const url = resolveAssetPath("yq.wasm");
   const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch yq.wasm (${response.status}).`);
   }
 
-  if ('instantiateStreaming' in WebAssembly) {
+  if ("instantiateStreaming" in WebAssembly) {
     try {
-      const streamingResult = await WebAssembly.instantiateStreaming(response, importObject);
+      const streamingResult = await WebAssembly.instantiateStreaming(
+        response,
+        importObject,
+      );
       return streamingResult.instance;
     } catch {
       // Fall back when the dev server does not provide the expected mime type.
@@ -97,9 +110,9 @@ async function instantiateModule(importObject: WebAssembly.Imports): Promise<Web
 async function waitForEvaluator(timeoutMs: number = 15000): Promise<void> {
   const startedAt = performance.now();
 
-  while (typeof window.yqEvaluate !== 'function') {
+  while (typeof window.yqEvaluate !== "function") {
     if (performance.now() - startedAt > timeoutMs) {
-      throw new Error('Timed out waiting for yq WASM to register.');
+      throw new Error("Timed out waiting for yq WASM to register.");
     }
 
     await new Promise<void>((resolve) => window.setTimeout(resolve, 16));
@@ -107,6 +120,13 @@ async function waitForEvaluator(timeoutMs: number = 15000): Promise<void> {
 }
 
 export async function initYq(): Promise<void> {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.yqEvaluate === "function"
+  ) {
+    return;
+  }
+
   if (initPromise) {
     return initPromise;
   }
@@ -115,10 +135,10 @@ export async function initYq(): Promise<void> {
     await ensureRuntimeScript();
 
     if (!window.Go) {
-      throw new Error('wasm_exec.js loaded without exposing the Go runtime.');
+      throw new Error("wasm_exec.js loaded without exposing the Go runtime.");
     }
 
-    if (typeof window.yqEvaluate === 'function') {
+    if (typeof window.yqEvaluate === "function") {
       return;
     }
 
@@ -131,7 +151,7 @@ export async function initYq(): Promise<void> {
     await Promise.race([
       waitForEvaluator(),
       runPromise.then(() => {
-        throw new Error('yq WASM exited before initialization completed.');
+        throw new Error("yq WASM exited before initialization completed.");
       }),
     ]);
   })().catch((error: unknown) => {
@@ -150,13 +170,29 @@ export async function evaluate(
 ): Promise<string> {
   await initYq();
 
-  if (typeof window.yqEvaluate !== 'function') {
-    throw new Error('yq WASM is not ready yet.');
+  if (typeof window.yqEvaluate !== "function") {
+    throw new Error("yq WASM is not ready yet.");
   }
 
+  const startedAt = performance.now();
+
   try {
-    return window.yqEvaluate(input, expression, inputFormat, outputFormat);
+    const result = window.yqEvaluate(
+      input,
+      expression,
+      inputFormat,
+      outputFormat,
+    );
+    if (performance.now() - startedAt > EVALUATION_TIMEOUT_MS) {
+      throw new Error("Execution timed out");
+    }
+
+    return result;
   } catch (error: unknown) {
+    if (performance.now() - startedAt > EVALUATION_TIMEOUT_MS) {
+      throw new Error("Execution timed out");
+    }
+
     throw normalizeError(error);
   }
 }

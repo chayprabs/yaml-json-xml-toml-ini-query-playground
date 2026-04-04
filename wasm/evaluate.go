@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 )
@@ -24,6 +25,13 @@ const (
 	outputTOML  outputFormat = "toml"
 	outputProps outputFormat = "props"
 )
+
+type evaluationOptions struct {
+	NoDoc        bool
+	UnwrapScalar bool
+}
+
+var expressionParserOnce sync.Once
 
 func normalizeFormat(format string) string {
 	return strings.ToLower(strings.TrimSpace(format))
@@ -47,29 +55,79 @@ func validateOutputFormat(format string) error {
 	}
 }
 
-func configureYqPreferences(format string) {
-	yqlib.ConfiguredYamlPreferences.Indent = 2
-	yqlib.ConfiguredYamlPreferences.UnwrapScalar = format == string(outputYAML)
-	yqlib.ConfiguredYamlPreferences.ColorsEnabled = false
-	yqlib.ConfiguredYamlPreferences.PrintDocSeparators = true
-
-	yqlib.ConfiguredJSONPreferences.Indent = 2
-	yqlib.ConfiguredJSONPreferences.UnwrapScalar = false
-	yqlib.ConfiguredJSONPreferences.ColorsEnabled = false
-
-	yqlib.ConfiguredXMLPreferences.Indent = 2
-	yqlib.ConfiguredXMLPreferences.StrictMode = false
-
-	yqlib.ConfiguredCsvPreferences.AutoParse = true
-	yqlib.ConfiguredPropertiesPreferences.UnwrapScalar = format == string(outputProps)
-	yqlib.ConfiguredTomlPreferences.ColorsEnabled = false
-	yqlib.ConfiguredKYamlPreferences.Indent = 2
-	yqlib.ConfiguredKYamlPreferences.UnwrapScalar = false
-	yqlib.ConfiguredKYamlPreferences.ColorsEnabled = false
-	yqlib.ConfiguredKYamlPreferences.PrintDocSeparators = true
+func defaultEvaluationOptions(format string) evaluationOptions {
+	return evaluationOptions{
+		NoDoc:        false,
+		UnwrapScalar: format == string(outputYAML) || format == string(outputProps),
+	}
 }
 
-func evaluate(input string, expression string, inFormat string, outFormat string) (string, error) {
+func initExpressionParser() {
+	expressionParserOnce.Do(yqlib.InitExpressionParser)
+}
+
+func newDecoder(format string) (yqlib.Decoder, error) {
+	switch inputFormat(format) {
+	case inputYAML:
+		yamlPreferences := yqlib.NewDefaultYamlPreferences()
+		return yqlib.NewYamlDecoder(yamlPreferences), nil
+	case inputJSON:
+		return yqlib.NewJSONDecoder(), nil
+	case inputXML:
+		xmlPreferences := yqlib.NewDefaultXmlPreferences()
+		return yqlib.NewXMLDecoder(xmlPreferences), nil
+	case inputCSV:
+		csvPreferences := yqlib.NewDefaultCsvPreferences()
+		return yqlib.NewCSVObjectDecoder(csvPreferences), nil
+	case inputTOML:
+		return yqlib.NewTomlDecoder(), nil
+	default:
+		return nil, fmt.Errorf("unsupported input format %q", format)
+	}
+}
+
+func newEncoder(format string, options evaluationOptions) (yqlib.Encoder, error) {
+	switch outputFormat(format) {
+	case outputYAML:
+		yamlPreferences := yqlib.NewDefaultYamlPreferences()
+		yamlPreferences.Indent = 2
+		yamlPreferences.ColorsEnabled = false
+		yamlPreferences.PrintDocSeparators = !options.NoDoc
+		yamlPreferences.UnwrapScalar = options.UnwrapScalar
+		return yqlib.NewYamlEncoder(yamlPreferences), nil
+	case outputJSON:
+		jsonPreferences := yqlib.NewDefaultJsonPreferences()
+		jsonPreferences.Indent = 2
+		jsonPreferences.ColorsEnabled = false
+		jsonPreferences.UnwrapScalar = options.UnwrapScalar
+		return yqlib.NewJSONEncoder(jsonPreferences), nil
+	case outputXML:
+		xmlPreferences := yqlib.NewDefaultXmlPreferences()
+		xmlPreferences.Indent = 2
+		return yqlib.NewXMLEncoder(xmlPreferences), nil
+	case outputCSV:
+		csvPreferences := yqlib.NewDefaultCsvPreferences()
+		return yqlib.NewCsvEncoder(csvPreferences), nil
+	case outputTOML:
+		tomlPreferences := yqlib.NewDefaultTomlPreferences()
+		tomlPreferences.ColorsEnabled = false
+		return yqlib.NewTomlEncoderWithPrefs(tomlPreferences), nil
+	case outputProps:
+		propertiesPreferences := yqlib.NewDefaultPropertiesPreferences()
+		propertiesPreferences.UnwrapScalar = options.UnwrapScalar
+		return yqlib.NewPropertiesEncoder(propertiesPreferences), nil
+	default:
+		return nil, fmt.Errorf("unsupported output format %q", format)
+	}
+}
+
+func evaluateWithOptions(
+	input string,
+	expression string,
+	inFormat string,
+	outFormat string,
+	options evaluationOptions,
+) (string, error) {
 	inputFormatName := normalizeFormat(inFormat)
 	outputFormatName := normalizeFormat(outFormat)
 
@@ -89,33 +147,27 @@ func evaluate(input string, expression string, inFormat string, outFormat string
 		return "", err
 	}
 
-	configureYqPreferences(outputFormatName)
-	yqlib.InitExpressionParser()
-
-	decoderFormat, err := yqlib.FormatFromString(inputFormatName)
+	decoder, err := newDecoder(inputFormatName)
 	if err != nil {
 		return "", err
 	}
-	if decoderFormat.DecoderFactory == nil {
-		return "", fmt.Errorf("no support for %s input format", inputFormatName)
-	}
 
-	encoderFormat, err := yqlib.FormatFromString(outputFormatName)
+	encoder, err := newEncoder(outputFormatName, options)
 	if err != nil {
 		return "", err
 	}
-	if encoderFormat.EncoderFactory == nil {
-		return "", fmt.Errorf("no support for %s output format", outputFormatName)
-	}
 
-	decoder := decoderFormat.DecoderFactory()
-	encoder := encoderFormat.EncoderFactory()
-	if decoder == nil {
-		return "", fmt.Errorf("no support for %s input format", inputFormatName)
-	}
-	if encoder == nil {
-		return "", fmt.Errorf("no support for %s output format", outputFormatName)
-	}
+	initExpressionParser()
 
 	return yqlib.NewStringEvaluator().Evaluate(expression, input, encoder, decoder)
+}
+
+func evaluate(input string, expression string, inFormat string, outFormat string) (string, error) {
+	return evaluateWithOptions(
+		input,
+		expression,
+		inFormat,
+		outFormat,
+		defaultEvaluationOptions(normalizeFormat(outFormat)),
+	)
 }

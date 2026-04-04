@@ -41,6 +41,20 @@ func TestEvaluateInvalidExpression(t *testing.T) {
 	}
 }
 
+func TestEvaluateEmptyInput(t *testing.T) {
+	_, err := evaluate("", ".foo", "yaml", "yaml")
+	if err == nil || !strings.Contains(err.Error(), "Input is required") {
+		t.Fatalf("expected a friendly empty-input error, got %v", err)
+	}
+}
+
+func TestEvaluateEmptyExpression(t *testing.T) {
+	_, err := evaluate("foo: bar\n", "", "yaml", "yaml")
+	if err == nil || !strings.Contains(err.Error(), "Expression is required") {
+		t.Fatalf("expected a friendly empty-expression error, got %v", err)
+	}
+}
+
 func TestEvaluateMultiDocumentYAML(t *testing.T) {
 	input := "foo: first\n---\nfoo: second\n"
 	result, err := evaluate(input, ".foo", "yaml", "yaml")

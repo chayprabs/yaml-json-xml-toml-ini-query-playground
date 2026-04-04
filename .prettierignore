@@ -1,0 +1,8 @@
+.next
+.tools
+node_modules
+out
+public/wasm_exec.js
+public/yq.wasm
+test-results
+yq

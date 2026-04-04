@@ -1,4 +1,4 @@
-import { YqPlayground } from '@/components/YqPlayground';
+import { YqPlayground } from "@/components/YqPlayground";
 
 export default function Home() {
   return (
@@ -10,11 +10,13 @@ export default function Home() {
               Fully Static Next.js + Go WASM
             </p>
             <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-              A browser-only interface for <span className="text-ember">yq</span>.
+              A browser-only interface for{" "}
+              <span className="text-ember">yq</span>.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-ink/75 sm:text-lg">
-              Expressions, format conversion, and multi-document handling all run client-side with
-              WebAssembly. No API routes. No server-side evaluation. Just static files.
+              Expressions, format conversion, and multi-document handling all
+              run client-side with WebAssembly. No API routes. No server-side
+              evaluation. Just static files.
             </p>
           </div>
           <div className="grid gap-3 rounded-2xl border border-ink/10 bg-paper/80 p-5 text-sm text-ink/75 sm:grid-cols-3 sm:gap-5">

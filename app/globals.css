@@ -13,8 +13,16 @@
 html {
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(198, 93, 46, 0.14), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(36, 92, 74, 0.14), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(198, 93, 46, 0.14),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(36, 92, 74, 0.14),
+      transparent 34%
+    ),
     #f6f0e3;
 }
 
@@ -23,7 +31,11 @@ body {
   min-height: 100vh;
   color: #17141f;
   background:
-    linear-gradient(180deg, rgba(246, 240, 227, 0.96), rgba(252, 249, 242, 0.98)),
+    linear-gradient(
+      180deg,
+      rgba(246, 240, 227, 0.96),
+      rgba(252, 249, 242, 0.98)
+    ),
     #f6f0e3;
 }
 

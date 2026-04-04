@@ -1,11 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { evaluate, initYq } from '@/lib/yq-wasm';
+import { evaluate, initYq } from "@/lib/yq-wasm";
 
-type Format = 'yaml' | 'json' | 'xml' | 'csv' | 'toml' | 'props';
-type InputFormat = Exclude<Format, 'props'>;
+type Format = "yaml" | "json" | "xml" | "csv" | "toml" | "props";
+type InputFormat = Exclude<Format, "props">;
+type WasmState = "loading" | "ready" | "error";
 
 type Example = {
   id: string;
@@ -18,11 +19,11 @@ type Example = {
 
 const examples: Example[] = [
   {
-    id: 'k8s',
-    label: 'Kubernetes name',
-    expression: '.metadata.name',
-    inputFormat: 'yaml',
-    outputFormat: 'yaml',
+    id: "k8s",
+    label: "Kubernetes name",
+    expression: ".metadata.name",
+    inputFormat: "yaml",
+    outputFormat: "yaml",
     input: `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,11 +43,11 @@ spec:
           image: nginx:1.27`,
   },
   {
-    id: 'compose',
-    label: 'Compose service keys',
-    expression: '.services | keys',
-    inputFormat: 'yaml',
-    outputFormat: 'yaml',
+    id: "compose",
+    label: "Compose service keys",
+    expression: ".services | keys",
+    inputFormat: "yaml",
+    outputFormat: "yaml",
     input: `services:
   web:
     image: nginx:stable
@@ -56,11 +57,11 @@ spec:
     image: redis:7`,
   },
   {
-    id: 'json-select',
-    label: 'Filter JSON entries',
-    expression: '. | to_entries | .[] | select(.value > 100)',
-    inputFormat: 'json',
-    outputFormat: 'yaml',
+    id: "json-select",
+    label: "Filter JSON entries",
+    expression: ". | to_entries | .[] | select(.value > 100)",
+    inputFormat: "json",
+    outputFormat: "yaml",
     input: `{
   "bronze": 24,
   "silver": 118,
@@ -69,11 +70,11 @@ spec:
 }`,
   },
   {
-    id: 'yaml-array',
-    label: 'Array names',
-    expression: '.[] | .name',
-    inputFormat: 'yaml',
-    outputFormat: 'yaml',
+    id: "yaml-array",
+    label: "Array names",
+    expression: ".[] | .name",
+    inputFormat: "yaml",
+    outputFormat: "yaml",
     input: `- name: Ada
   role: engineer
 - name: Grace
@@ -82,11 +83,11 @@ spec:
   role: operator`,
   },
   {
-    id: 'redact',
-    label: 'Delete password',
-    expression: 'del(.password)',
-    inputFormat: 'yaml',
-    outputFormat: 'yaml',
+    id: "redact",
+    label: "Delete password",
+    expression: "del(.password)",
+    inputFormat: "yaml",
+    outputFormat: "yaml",
     input: `username: admin
 password: super-secret
 region: us-east-1
@@ -94,78 +95,143 @@ retries: 3`,
   },
 ];
 
-const inputFormats: InputFormat[] = ['yaml', 'json', 'xml', 'csv', 'toml'];
-const outputFormats: Format[] = ['yaml', 'json', 'xml', 'csv', 'toml', 'props'];
+const inputFormats: InputFormat[] = ["yaml", "json", "xml", "csv", "toml"];
+const outputFormats: Format[] = ["yaml", "json", "xml", "csv", "toml", "props"];
 
 export function YqPlayground() {
   const [expression, setExpression] = useState<string>(examples[0].expression);
   const [input, setInput] = useState<string>(examples[0].input);
-  const [inputFormat, setInputFormat] = useState<InputFormat>(examples[0].inputFormat);
-  const [outputFormat, setOutputFormat] = useState<Format>(examples[0].outputFormat);
-  const [output, setOutput] = useState<string>('');
+  const [inputFormat, setInputFormat] = useState<InputFormat>(
+    examples[0].inputFormat,
+  );
+  const [outputFormat, setOutputFormat] = useState<Format>(
+    examples[0].outputFormat,
+  );
+  const [output, setOutput] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
-  const [isReady, setIsReady] = useState<boolean>(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [wasmState, setWasmState] = useState<WasmState>("loading");
+
+  const outputRef = useRef<HTMLTextAreaElement | null>(null);
+  const outputScrollTopRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+
+  const isReady = wasmState === "ready";
+  const activeError = error ?? initError;
 
   useEffect(() => {
-    let active = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setWasmState("loading");
+    setInitError(null);
+    setError(null);
 
     void initYq()
       .then(() => {
-        if (active) {
-          setIsReady(true);
+        if (isMountedRef.current) {
+          setWasmState("ready");
         }
       })
-      .catch((initError: unknown) => {
-        if (!active) {
+      .catch((initFailure: unknown) => {
+        if (!isMountedRef.current) {
           return;
         }
 
-        const message = initError instanceof Error ? initError.message : 'Failed to initialize yq.';
-        setError(message);
+        const message =
+          initFailure instanceof Error
+            ? initFailure.message
+            : "Failed to initialize yq.";
+        setWasmState("error");
+        setInitError(message);
       });
-
-    return () => {
-      active = false;
-    };
   }, []);
+
+  const runEvaluation = useCallback(
+    async (
+      nextInput: string = input,
+      nextExpression: string = expression,
+      nextInputFormat: InputFormat = inputFormat,
+      nextOutputFormat: Format = outputFormat,
+    ) => {
+      if (isRunning) {
+        return;
+      }
+
+      if (wasmState === "loading") {
+        setError("WASM is still loading. Please wait a moment and try again.");
+        return;
+      }
+
+      if (wasmState === "error") {
+        setError(
+          initError ?? "WASM failed to initialize. Refresh the page to retry.",
+        );
+        return;
+      }
+
+      setIsRunning(true);
+      setError(null);
+
+      const startedAt = performance.now();
+
+      try {
+        const result = await evaluate(
+          nextInput,
+          nextExpression,
+          nextInputFormat,
+          nextOutputFormat,
+        );
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setOutput(result);
+        setDurationMs(performance.now() - startedAt);
+      } catch (evaluationError: unknown) {
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setOutput("");
+        setDurationMs(performance.now() - startedAt);
+        setError(
+          evaluationError instanceof Error
+            ? evaluationError.message
+            : "yq evaluation failed with an unknown error.",
+        );
+      } finally {
+        if (isMountedRef.current) {
+          setIsRunning(false);
+        }
+      }
+    },
+    [expression, initError, input, inputFormat, isRunning, outputFormat, wasmState],
+  );
 
   useEffect(() => {
     if (!isReady) {
       return;
     }
 
-    void runEvaluation(examples[0].input, examples[0].expression, examples[0].inputFormat, examples[0].outputFormat);
-  }, [isReady]);
+    void runEvaluation(
+      examples[0].input,
+      examples[0].expression,
+      examples[0].inputFormat,
+      examples[0].outputFormat,
+    );
+  }, [isReady, runEvaluation]);
 
-  async function runEvaluation(
-    nextInput: string = input,
-    nextExpression: string = expression,
-    nextInputFormat: InputFormat = inputFormat,
-    nextOutputFormat: Format = outputFormat,
-  ) {
-    setIsRunning(true);
-    setError(null);
-
-    const startedAt = performance.now();
-
-    try {
-      const result = await evaluate(nextInput, nextExpression, nextInputFormat, nextOutputFormat);
-      setOutput(result);
-      setDurationMs(performance.now() - startedAt);
-    } catch (evaluationError: unknown) {
-      setOutput('');
-      setDurationMs(performance.now() - startedAt);
-      setError(
-        evaluationError instanceof Error
-          ? evaluationError.message
-          : 'yq evaluation failed with an unknown error.',
-      );
-    } finally {
-      setIsRunning(false);
+  useLayoutEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputScrollTopRef.current;
     }
-  }
+  }, [output]);
 
   function applyExample(example: Example) {
     setExpression(example.expression);
@@ -174,7 +240,12 @@ export function YqPlayground() {
     setOutputFormat(example.outputFormat);
 
     if (isReady) {
-      void runEvaluation(example.input, example.expression, example.inputFormat, example.outputFormat);
+      void runEvaluation(
+        example.input,
+        example.expression,
+        example.inputFormat,
+        example.outputFormat,
+      );
     }
   }
 
@@ -182,10 +253,12 @@ export function YqPlayground() {
     <section className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)]">
       <aside className="panel-grid rounded-[2rem] border border-ink/10 bg-grid bg-[length:24px_24px] bg-white/70 p-5 shadow-panel backdrop-blur">
         <div className="rounded-[1.5rem] border border-ink/10 bg-paper/80 p-5">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-ember">Examples</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-ember">
+            Examples
+          </p>
           <p className="mt-3 text-sm leading-6 text-ink/75">
-            Load a preset to swap the input and expression instantly. Each example also runs
-            immediately once the WASM runtime is ready.
+            Load a preset to swap the input and expression instantly. Each
+            example also runs immediately once the WASM runtime is ready.
           </p>
         </div>
 
@@ -230,7 +303,9 @@ export function YqPlayground() {
                 data-testid="input-format"
                 className="min-h-12 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-ember/50 focus:ring-2 focus:ring-ember/30"
                 value={inputFormat}
-                onChange={(event) => setInputFormat(event.target.value as InputFormat)}
+                onChange={(event) =>
+                  setInputFormat(event.target.value as InputFormat)
+                }
               >
                 {inputFormats.map((format) => (
                   <option key={format} value={format}>
@@ -248,7 +323,9 @@ export function YqPlayground() {
                 data-testid="output-format"
                 className="min-h-12 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-ember/50 focus:ring-2 focus:ring-ember/30"
                 value={outputFormat}
-                onChange={(event) => setOutputFormat(event.target.value as Format)}
+                onChange={(event) =>
+                  setOutputFormat(event.target.value as Format)
+                }
               >
                 {outputFormats.map((format) => (
                   <option key={format} value={format}>
@@ -269,24 +346,32 @@ export function YqPlayground() {
                 className="min-h-12 rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-ember disabled:cursor-not-allowed disabled:bg-ink/50"
                 onClick={() => void runEvaluation()}
               >
-                {isRunning ? 'Running…' : 'Run'}
+                {isRunning ? "Running..." : "Run"}
               </button>
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-            {!isReady ? (
+            {wasmState === "loading" ? (
               <div
                 data-testid="loading-indicator"
                 className="rounded-full border border-brass/35 bg-brass/10 px-3 py-1 font-medium text-ink"
               >
-                Initializing WASM runtime…
+                Initializing WASM runtime...
               </div>
-            ) : (
+            ) : null}
+
+            {wasmState === "ready" ? (
               <div className="rounded-full border border-pine/25 bg-pine/10 px-3 py-1 font-medium text-pine">
                 WASM ready
               </div>
-            )}
+            ) : null}
+
+            {wasmState === "error" ? (
+              <div className="rounded-full border border-red-200 bg-red-50 px-3 py-1 font-medium text-danger">
+                WASM failed to load
+              </div>
+            ) : null}
 
             {durationMs !== null ? (
               <div className="rounded-full border border-ink/10 bg-white px-3 py-1 text-ink/75">
@@ -316,18 +401,22 @@ export function YqPlayground() {
             </span>
             <textarea
               data-testid="output-editor"
+              ref={outputRef}
               readOnly
               className="min-h-[22rem] rounded-[1.5rem] border border-ink/10 bg-ink px-4 py-4 font-[family-name:var(--font-mono)] text-sm leading-6 text-paper shadow-inner outline-none"
               value={output}
+              onScroll={(event) => {
+                outputScrollTopRef.current = event.currentTarget.scrollTop;
+              }}
               spellCheck={false}
             />
 
-            {error ? (
+            {activeError ? (
               <div
                 data-testid="error-box"
                 className="rounded-[1.3rem] border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-danger"
               >
-                {error}
+                {activeError}
               </div>
             ) : null}
           </div>

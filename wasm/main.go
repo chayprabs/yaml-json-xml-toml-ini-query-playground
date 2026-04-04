@@ -4,12 +4,17 @@ package main
 
 import "syscall/js"
 
-func yqEvaluateBridge(_ js.Value, args []js.Value) any {
+func makeBridgeResult(ok bool, value string, errMessage string) map[string]interface{} {
+	return map[string]interface{}{
+		"ok":    ok,
+		"value": value,
+		"error": errMessage,
+	}
+}
+
+func yqEvaluateBridge(_ js.Value, args []js.Value) interface{} {
 	if len(args) != 4 {
-		return map[string]any{
-			"ok":    false,
-			"error": "window.yqEvaluate expects exactly 4 arguments: input, expression, inputFormat, outputFormat",
-		}
+		return makeBridgeResult(false, "", "window.yqEvaluate expects exactly 4 arguments: input, expression, inputFormat, outputFormat")
 	}
 
 	result, err := evaluate(
@@ -19,16 +24,10 @@ func yqEvaluateBridge(_ js.Value, args []js.Value) any {
 		args[3].String(),
 	)
 	if err != nil {
-		return map[string]any{
-			"ok":    false,
-			"error": err.Error(),
-		}
+		return makeBridgeResult(false, "", err.Error())
 	}
 
-	return map[string]any{
-		"ok":    true,
-		"value": result,
-	}
+	return makeBridgeResult(true, result, "")
 }
 
 func main() {
