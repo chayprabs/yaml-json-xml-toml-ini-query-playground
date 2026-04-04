@@ -132,10 +132,21 @@ async function setPlayground(
   }
 }
 
+async function waitForPlaygroundIdle(page) {
+  await page
+    .getByTestId("run-button")
+    .waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-testid="run-button"]');
+    return button instanceof HTMLButtonElement && !button.disabled;
+  });
+}
+
 async function runUiEvaluation(page, state) {
+  await waitForPlaygroundIdle(page);
   await setPlayground(page, state);
   await page.getByTestId("run-button").click();
-  await page.waitForTimeout(300);
+  await waitForPlaygroundIdle(page);
 
   const hasError = (await page.getByTestId("error-box").count()) > 0;
   const output = await page.getByTestId("output-editor").inputValue();
@@ -707,6 +718,7 @@ async function main() {
       "clear expression-related UI error",
     );
 
+    await waitForPlaygroundIdle(page);
     await setPlayground(page, {
       input: "foo: bar\n",
       expression: ".foo",
@@ -723,7 +735,7 @@ async function main() {
         button.click();
       }
     });
-    await page.waitForTimeout(1000);
+    await waitForPlaygroundIdle(page);
     const rapidFireOutput = await page
       .getByTestId("output-editor")
       .inputValue();

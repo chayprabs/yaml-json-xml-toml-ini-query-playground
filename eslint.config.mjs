@@ -1,7 +1,7 @@
 import nextVitals from "eslint-config-next/core-web-vitals";
 import globals from "globals";
 
-export default [
+const config = [
   {
     ignores: [
       ".next/**",
@@ -28,3 +28,5 @@ export default [
     },
   },
 ];
+
+export default config;

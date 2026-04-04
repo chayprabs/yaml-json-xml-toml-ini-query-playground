@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { evaluate, initYq } from "@/lib/yq-wasm";
 
@@ -122,6 +122,8 @@ export function YqPlayground() {
   const activeError = error ?? initError;
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     return () => {
       isMountedRef.current = false;
     };
@@ -152,49 +154,35 @@ export function YqPlayground() {
       });
   }, []);
 
-  const runEvaluation = useCallback(
-    async (
-      nextInput: string = input,
-      nextExpression: string = expression,
-      nextInputFormat: InputFormat = inputFormat,
-      nextOutputFormat: Format = outputFormat,
-    ) => {
-      if (isRunning) {
-        return;
-      }
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
 
-      if (wasmState === "loading") {
-        setError("WASM is still loading. Please wait a moment and try again.");
-        return;
-      }
+    let cancelled = false;
+    const initialExample = examples[0];
 
-      if (wasmState === "error") {
-        setError(
-          initError ?? "WASM failed to initialize. Refresh the page to retry.",
-        );
-        return;
-      }
+    setIsRunning(true);
+    setError(null);
 
-      setIsRunning(true);
-      setError(null);
+    const startedAt = performance.now();
 
-      const startedAt = performance.now();
-
-      try {
-        const result = await evaluate(
-          nextInput,
-          nextExpression,
-          nextInputFormat,
-          nextOutputFormat,
-        );
-        if (!isMountedRef.current) {
+    void evaluate(
+      initialExample.input,
+      initialExample.expression,
+      initialExample.inputFormat,
+      initialExample.outputFormat,
+    )
+      .then((result) => {
+        if (!isMountedRef.current || cancelled) {
           return;
         }
 
         setOutput(result);
         setDurationMs(performance.now() - startedAt);
-      } catch (evaluationError: unknown) {
-        if (!isMountedRef.current) {
+      })
+      .catch((evaluationError: unknown) => {
+        if (!isMountedRef.current || cancelled) {
           return;
         }
 
@@ -205,33 +193,82 @@ export function YqPlayground() {
             ? evaluationError.message
             : "yq evaluation failed with an unknown error.",
         );
-      } finally {
-        if (isMountedRef.current) {
+      })
+      .finally(() => {
+        if (isMountedRef.current && !cancelled) {
           setIsRunning(false);
         }
-      }
-    },
-    [expression, initError, input, inputFormat, isRunning, outputFormat, wasmState],
-  );
+      });
 
-  useEffect(() => {
-    if (!isReady) {
-      return;
-    }
-
-    void runEvaluation(
-      examples[0].input,
-      examples[0].expression,
-      examples[0].inputFormat,
-      examples[0].outputFormat,
-    );
-  }, [isReady, runEvaluation]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady]);
 
   useLayoutEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputScrollTopRef.current;
     }
   }, [output]);
+
+  async function runEvaluation(
+    nextInput: string = input,
+    nextExpression: string = expression,
+    nextInputFormat: InputFormat = inputFormat,
+    nextOutputFormat: Format = outputFormat,
+  ) {
+    if (isRunning) {
+      return;
+    }
+
+    if (wasmState === "loading") {
+      setError("WASM is still loading. Please wait a moment and try again.");
+      return;
+    }
+
+    if (wasmState === "error") {
+      setError(
+        initError ?? "WASM failed to initialize. Refresh the page to retry.",
+      );
+      return;
+    }
+
+    setIsRunning(true);
+    setError(null);
+
+    const startedAt = performance.now();
+
+    try {
+      const result = await evaluate(
+        nextInput,
+        nextExpression,
+        nextInputFormat,
+        nextOutputFormat,
+      );
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      setOutput(result);
+      setDurationMs(performance.now() - startedAt);
+    } catch (evaluationError: unknown) {
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      setOutput("");
+      setDurationMs(performance.now() - startedAt);
+      setError(
+        evaluationError instanceof Error
+          ? evaluationError.message
+          : "yq evaluation failed with an unknown error.",
+      );
+    } finally {
+      if (isMountedRef.current) {
+        setIsRunning(false);
+      }
+    }
+  }
 
   function applyExample(example: Example) {
     setExpression(example.expression);
