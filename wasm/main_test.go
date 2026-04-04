@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -77,5 +78,66 @@ func TestEvaluateXMLRoundTrip(t *testing.T) {
 
 	if !strings.Contains(result, "<cat>") || !strings.Contains(result, "<name>Fifi</name>") {
 		t.Fatalf("expected xml output to include the original structure, got %q", result)
+	}
+}
+
+func TestEvaluateWithOptionsNoDoc(t *testing.T) {
+	input := "foo: first\n---\nfoo: second\n"
+	result, err := evaluateWithOptions(input, ".foo", "yaml", "yaml", evaluationOptions{
+		NoDoc:        true,
+		UnwrapScalar: true,
+	})
+	if err != nil {
+		t.Fatalf("expected multi-document yaml evaluation without doc separators to succeed: %v", err)
+	}
+
+	expected := "first\nsecond\n"
+	if result != expected {
+		t.Fatalf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestEvaluateWithOptionsUnwrapScalarFalse(t *testing.T) {
+	result, err := evaluateWithOptions("foo: \"yes\"\n", ".foo", "yaml", "json", evaluationOptions{
+		UnwrapScalar: false,
+	})
+	if err != nil {
+		t.Fatalf("expected wrapped json scalar evaluation to succeed: %v", err)
+	}
+
+	if result != "\"yes\"\n" {
+		t.Fatalf("expected quoted json scalar output, got %q", result)
+	}
+}
+
+func TestEvaluateWithOptionsPrettyPrint(t *testing.T) {
+	result, err := evaluateWithOptions("foo: {bar: baz}\n", ".", "yaml", "yaml", evaluationOptions{
+		PrettyPrint:  true,
+		UnwrapScalar: true,
+	})
+	if err != nil {
+		t.Fatalf("expected pretty print evaluation to succeed: %v", err)
+	}
+
+	if strings.Contains(result, "{bar: baz}") {
+		t.Fatalf("expected pretty print to expand flow style, got %q", result)
+	}
+}
+
+func TestEvaluateWithOptionsXMLToJSON(t *testing.T) {
+	result, err := evaluateWithOptions("<root><name>yq</name></root>", ".", "xml", "json", evaluationOptions{
+		UnwrapScalar: false,
+	})
+	if err != nil {
+		t.Fatalf("expected xml -> json evaluation to succeed: %v", err)
+	}
+
+	var parsed map[string]map[string]string
+	if err := json.Unmarshal([]byte(result), &parsed); err != nil {
+		t.Fatalf("expected valid json output, got error: %v\noutput:\n%s", err, result)
+	}
+
+	if parsed["root"]["name"] != "yq" {
+		t.Fatalf("expected parsed json to contain root.name=yq, got %#v", parsed)
 	}
 }

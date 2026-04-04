@@ -28,6 +28,7 @@ const (
 
 type evaluationOptions struct {
 	NoDoc        bool
+	PrettyPrint  bool
 	UnwrapScalar bool
 }
 
@@ -159,7 +160,12 @@ func evaluateWithOptions(
 
 	initExpressionParser()
 
-	return yqlib.NewStringEvaluator().Evaluate(expression, input, encoder, decoder)
+	expressionToEvaluate := expression
+	if options.PrettyPrint {
+		expressionToEvaluate = fmt.Sprintf("%s | %s", expression, yqlib.PrettyPrintExp)
+	}
+
+	return yqlib.NewStringEvaluator().Evaluate(expressionToEvaluate, input, encoder, decoder)
 }
 
 func evaluate(input string, expression string, inFormat string, outFormat string) (string, error) {
