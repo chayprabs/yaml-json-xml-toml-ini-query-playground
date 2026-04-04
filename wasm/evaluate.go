@@ -73,8 +73,12 @@ func evaluate(input string, expression string, inFormat string, outFormat string
 	inputFormatName := normalizeFormat(inFormat)
 	outputFormatName := normalizeFormat(outFormat)
 
-	if expression == "" {
-		expression = "."
+	if strings.TrimSpace(expression) == "" {
+		return "", fmt.Errorf("Expression is required. Enter a yq expression before running.")
+	}
+
+	if strings.TrimSpace(input) == "" {
+		return "", fmt.Errorf("Input is required. Paste a document before running yq.")
 	}
 
 	if err := validateInputFormat(inputFormatName); err != nil {
