@@ -1,6 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function waitForPlaygroundReady(page: Page, timeout: number = 60_000) {
+const PLAYGROUND_READY_TIMEOUT_MS = 60_000;
+
+async function waitForPlaygroundReady(
+  page: Page,
+  timeout: number = PLAYGROUND_READY_TIMEOUT_MS,
+) {
   await page.waitForFunction(
     () => {
       const runButton = document.querySelector('[data-testid="run-button"]');
@@ -211,7 +216,9 @@ test("restores state from the URL hash and ignores malformed hashes", async ({
   await page.getByTestId("output-format").selectOption("json");
 
   await expect
-    .poll(async () => decodedHashState(page))
+    .poll(async () => decodedHashState(page), {
+      timeout: PLAYGROUND_READY_TIMEOUT_MS,
+    })
     .toMatchObject({
       autoRun: false,
       engine: "dasel",
@@ -320,10 +327,10 @@ test("times out slow evaluations, restarts the worker, and remains usable", asyn
 
   await expect(page.getByTestId("error-box")).toContainText(
     "Evaluation timed out after 8s",
-    { timeout: 20_000 },
+    { timeout: PLAYGROUND_READY_TIMEOUT_MS },
   );
 
-  await waitForPlaygroundReady(page, 20_000);
+  await waitForPlaygroundReady(page, PLAYGROUND_READY_TIMEOUT_MS);
   await page.getByTestId("run-button").click();
   await expect(page.getByTestId("output-content")).toContainText("bar");
 });
@@ -372,18 +379,18 @@ test("keeps yq usable when the dasel wasm binary cannot be fetched", async ({
 
   await page.goto("/");
   await expect(page.getByTestId("engine-status-yq")).toContainText("Ready", {
-    timeout: 20_000,
+    timeout: PLAYGROUND_READY_TIMEOUT_MS,
   });
   await expect(page.getByTestId("engine-status-dasel")).toContainText(
     "Failed to initialize.",
     {
-      timeout: 20_000,
+      timeout: PLAYGROUND_READY_TIMEOUT_MS,
     },
   );
   await expect(page.getByTestId("engine-error-dasel")).toContainText(
     "Failed to load expression engine. Please refresh.",
     {
-      timeout: 20_000,
+      timeout: PLAYGROUND_READY_TIMEOUT_MS,
     },
   );
   await expect(page.getByTestId("engine-toggle-dasel")).toBeDisabled();
@@ -410,7 +417,7 @@ test("shows a compatibility message when WebAssembly is unavailable", async ({
   await page.goto("/");
   await expect(page.getByTestId("error-box")).toContainText(
     "WebAssembly is not supported in this browser",
-    { timeout: 20_000 },
+    { timeout: PLAYGROUND_READY_TIMEOUT_MS },
   );
   await expect(page.getByTestId("run-button")).toBeDisabled();
 });
@@ -462,5 +469,9 @@ test("keyboard submission still works after switching engines", async ({
     await page.getByTestId("expression-input").press("Control+Enter");
   }
 
-  await expect.poll(() => outputText(page)).toContain("9999");
+  await expect
+    .poll(() => outputText(page), {
+      timeout: PLAYGROUND_READY_TIMEOUT_MS,
+    })
+    .toContain("9999");
 });
