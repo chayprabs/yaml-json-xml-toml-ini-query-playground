@@ -3,6 +3,13 @@ const { existsSync } = require("node:fs");
 const path = require("node:path");
 
 const rootDir = path.resolve(__dirname, "..");
+const externalGo = path.join(
+  process.env.USERPROFILE ?? process.env.HOME ?? "",
+  ".codex-toolchains",
+  "go",
+  "bin",
+  process.platform === "win32" ? "go.exe" : "go",
+);
 const localGo = path.join(
   rootDir,
   ".tools",
@@ -11,7 +18,12 @@ const localGo = path.join(
   process.platform === "win32" ? "go.exe" : "go",
 );
 
-const candidates = existsSync(localGo) ? [localGo, "go"] : ["go"];
+const candidates = [externalGo, localGo, "go"].filter(
+  (candidate, index, all) =>
+    candidate &&
+    all.indexOf(candidate) === index &&
+    (candidate === "go" || existsSync(candidate)),
+);
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
@@ -33,6 +45,7 @@ for (const candidate of candidates) {
   process.exit(result.status ?? 0);
 }
 
-console.error("Go toolchain not found. Install Go or provide .tools/go.");
+console.error(
+  "Go toolchain not found. Install Go or provide .tools/go or %USERPROFILE%/.codex-toolchains/go.",
+);
 process.exit(1);
-

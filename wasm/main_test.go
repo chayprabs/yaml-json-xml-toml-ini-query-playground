@@ -44,14 +44,14 @@ func TestEvaluateInvalidExpression(t *testing.T) {
 
 func TestEvaluateEmptyInput(t *testing.T) {
 	_, err := evaluate("", ".foo", "yaml", "yaml")
-	if err == nil || !strings.Contains(err.Error(), "Input is required") {
+	if err == nil || !strings.Contains(err.Error(), "input is required") {
 		t.Fatalf("expected a friendly empty-input error, got %v", err)
 	}
 }
 
 func TestEvaluateEmptyExpression(t *testing.T) {
 	_, err := evaluate("foo: bar\n", "", "yaml", "yaml")
-	if err == nil || !strings.Contains(err.Error(), "Expression is required") {
+	if err == nil || !strings.Contains(err.Error(), "expression is required") {
 		t.Fatalf("expected a friendly empty-expression error, got %v", err)
 	}
 }
@@ -125,7 +125,7 @@ func TestEvaluateWithOptionsPrettyPrint(t *testing.T) {
 }
 
 func TestEvaluateWithOptionsXMLToJSON(t *testing.T) {
-	result, err := evaluateWithOptions("<root><name>yq</name></root>", ".", "xml", "json", evaluationOptions{
+	result, err := evaluateWithOptions("<root><name>engine</name></root>", ".", "xml", "json", evaluationOptions{
 		UnwrapScalar: false,
 	})
 	if err != nil {
@@ -137,7 +137,21 @@ func TestEvaluateWithOptionsXMLToJSON(t *testing.T) {
 		t.Fatalf("expected valid json output, got error: %v\noutput:\n%s", err, result)
 	}
 
-	if parsed["root"]["name"] != "yq" {
-		t.Fatalf("expected parsed json to contain root.name=yq, got %#v", parsed)
+	if parsed["root"]["name"] != "engine" {
+		t.Fatalf("expected parsed json to contain root.name=engine, got %#v", parsed)
+	}
+}
+
+func TestSafeEvaluateWithOptionsRecoversPanics(t *testing.T) {
+	_, err := safeEvaluateWithOptions("foo: bar\n", ".", "yaml", "yaml", evaluationOptions{
+		UnwrapScalar: true,
+		debugPanic:   true,
+	})
+	if err == nil {
+		t.Fatal("expected a panic to be recovered as an error")
+	}
+
+	if !strings.Contains(err.Error(), "internal error occurred") {
+		t.Fatalf("expected a friendly internal-error message, got %v", err)
 	}
 }

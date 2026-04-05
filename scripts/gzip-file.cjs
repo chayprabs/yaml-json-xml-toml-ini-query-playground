@@ -12,7 +12,9 @@ if (!target) {
 const filePath = path.resolve(target);
 const gzipPath = `${filePath}.gz`;
 const source = fs.readFileSync(filePath);
-const compressed = zlib.gzipSync(source, { level: zlib.constants.Z_BEST_COMPRESSION });
+const compressed = zlib.gzipSync(source, {
+  level: zlib.constants.Z_BEST_COMPRESSION,
+});
 
 fs.writeFileSync(gzipPath, compressed);
 console.log(`Wrote ${gzipPath}`);

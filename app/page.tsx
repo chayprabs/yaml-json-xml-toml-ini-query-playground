@@ -1,4 +1,6 @@
-import { YqPlayground } from "@/components/YqPlayground";
+import Link from "next/link";
+
+import { PlaygroundBoundary } from "@/components/PlaygroundBoundary";
 
 export default function Home() {
   return (
@@ -7,16 +9,15 @@ export default function Home() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-4">
             <p className="text-sm font-semibold uppercase tracking-[0.35em] text-ember">
-              Fully Static Next.js + Go WASM
+              Prabuddha Engine by Chaitanya Prabuddha
             </p>
             <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-              A browser-only interface for{" "}
-              <span className="text-ember">yq</span>.
+              Structured data queries and conversion, fully in the browser.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-ink/75 sm:text-lg">
-              Expressions, format conversion, and multi-document handling all
-              run client-side with WebAssembly. No API routes. No server-side
-              evaluation. Just static files.
+              Prabuddha Engine runs expressions, format conversion, and
+              multi-document handling client-side with WebAssembly. No API
+              routes. No server-side evaluation. Just static files.
             </p>
           </div>
           <div className="grid gap-3 rounded-2xl border border-ink/10 bg-paper/80 p-5 text-sm text-ink/75 sm:grid-cols-3 sm:gap-5">
@@ -37,11 +38,15 @@ export default function Home() {
         <div className="mt-8 grid gap-3 rounded-2xl border border-ink/10 bg-[#17141f] p-5 text-sm text-paper/75 sm:grid-cols-4">
           <div>
             <p className="font-semibold text-paper">Shareable</p>
-            <p>Input, expression, formats, and toggles sync into the URL hash.</p>
+            <p>
+              Input, expression, formats, and toggles sync into the URL hash.
+            </p>
           </div>
           <div>
             <p className="font-semibold text-paper">Fast Feedback</p>
-            <p>Auto-run is debounced, and manual runs work with Cmd/Ctrl+Enter.</p>
+            <p>
+              Auto-run is debounced, and manual runs work with Cmd/Ctrl+Enter.
+            </p>
           </div>
           <div>
             <p className="font-semibold text-paper">Output Controls</p>
@@ -49,12 +54,23 @@ export default function Home() {
           </div>
           <div>
             <p className="font-semibold text-paper">100% Browser</p>
-            <p>All yq processing stays in WebAssembly with zero backend services.</p>
+            <p>
+              All processing stays in WebAssembly with zero backend services.
+            </p>
           </div>
         </div>
       </section>
 
-      <YqPlayground />
+      <PlaygroundBoundary />
+
+      <footer className="pb-4 text-center">
+        <Link
+          href="/credits"
+          className="text-xs text-ink/55 transition hover:text-ember"
+        >
+          Open source credits
+        </Link>
+      </footer>
     </main>
   );
 }

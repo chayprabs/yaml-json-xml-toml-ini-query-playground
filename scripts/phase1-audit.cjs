@@ -53,7 +53,7 @@ async function evaluateInBrowser(
   return page.evaluate(
     ({ innerInput, innerExpression, innerInputFormat, innerOutputFormat }) => {
       try {
-        const value = window.yqEvaluate(
+        const value = window.engineEvaluate(
           innerInput,
           innerExpression,
           innerInputFormat,
@@ -87,7 +87,7 @@ async function timedEvaluateInBrowser(
     ({ innerInput, innerExpression, innerInputFormat, innerOutputFormat }) => {
       const startedAt = performance.now();
       try {
-        const value = window.yqEvaluate(
+        const value = window.engineEvaluate(
           innerInput,
           innerExpression,
           innerInputFormat,
@@ -132,6 +132,21 @@ async function setPlayground(
   }
 }
 
+async function getOutputText(page) {
+  return page
+    .getByTestId("output-content")
+    .evaluate((element) => element.textContent ?? "");
+}
+
+async function ensureAutoRun(page, enabled) {
+  const toggle = page.getByTestId("auto-run-toggle");
+  const isChecked = await toggle.isChecked();
+
+  if (isChecked !== enabled) {
+    await toggle.click();
+  }
+}
+
 async function waitForPlaygroundIdle(page) {
   await page
     .getByTestId("run-button")
@@ -144,12 +159,13 @@ async function waitForPlaygroundIdle(page) {
 
 async function runUiEvaluation(page, state) {
   await waitForPlaygroundIdle(page);
+  await ensureAutoRun(page, false);
   await setPlayground(page, state);
   await page.getByTestId("run-button").click();
   await waitForPlaygroundIdle(page);
 
   const hasError = (await page.getByTestId("error-box").count()) > 0;
-  const output = await page.getByTestId("output-editor").inputValue();
+  const output = await getOutputText(page);
   const error = hasError ? await page.getByTestId("error-box").innerText() : "";
 
   return { output, error };
@@ -157,7 +173,7 @@ async function runUiEvaluation(page, state) {
 
 async function waitForReady(page) {
   await page.goto(BASE_URL);
-  await page.waitForFunction(() => typeof window.yqEvaluate === "function");
+  await page.waitForFunction(() => typeof window.engineEvaluate === "function");
   await page
     .getByTestId("loading-indicator")
     .waitFor({ state: "detached", timeout: 30000 });
@@ -385,7 +401,7 @@ async function main() {
 
     const xmlName = await evaluateInBrowser(
       page,
-      "<root><name>yq</name></root>",
+      "<root><name>engine</name></root>",
       ".root.name",
       "xml",
       "yaml",
@@ -394,14 +410,14 @@ async function main() {
       results,
       16,
       "XML element lookup",
-      xmlName.ok && normalize(xmlName.value) === "yq",
+      xmlName.ok && normalize(xmlName.value) === "engine",
       xmlName.ok ? xmlName.value : xmlName.error,
-      "yq",
+      "engine",
     );
 
     const xmlJson = await evaluateInBrowser(
       page,
-      "<root><name>yq</name></root>",
+      "<root><name>engine</name></root>",
       ".",
       "xml",
       "json",
@@ -411,7 +427,7 @@ async function main() {
     if (xmlJson.ok) {
       try {
         const parsed = JSON.parse(xmlJson.value);
-        xmlJsonPass = parsed.root && parsed.root.name === "yq";
+        xmlJsonPass = parsed.root && parsed.root.name === "engine";
         xmlJsonActual = parsed;
       } catch (error) {
         xmlJsonActual = error instanceof Error ? error.message : String(error);
@@ -423,7 +439,7 @@ async function main() {
       "XML to JSON conversion",
       xmlJsonPass,
       xmlJsonActual,
-      'valid JSON object with root.name = "yq"',
+      'valid JSON object with root.name = "engine"',
     );
 
     const csvNames = await evaluateInBrowser(
@@ -737,8 +753,8 @@ async function main() {
     });
     await waitForPlaygroundIdle(page);
     const rapidFireOutput = await page
-      .getByTestId("output-editor")
-      .inputValue();
+      .getByTestId("output-content")
+      .evaluate((element) => element.textContent ?? "");
     const rapidFireError =
       (await page.getByTestId("error-box").count()) > 0
         ? await page.getByTestId("error-box").innerText()

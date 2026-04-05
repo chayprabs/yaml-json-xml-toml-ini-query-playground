@@ -3,6 +3,5 @@
 node_modules
 out
 public/wasm_exec.js
-public/yq.wasm
+public/engine.wasm
 test-results
-yq

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import "./globals.css";
@@ -16,8 +15,14 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "yq WASM Playground",
-  description: "Run mikefarah/yq entirely in your browser through WebAssembly.",
+  title: "Prabuddha Engine",
+  description:
+    "A browser-native structured data playground by Chaitanya Prabuddha.",
+  openGraph: {
+    title: "Prabuddha Engine",
+    description:
+      "A browser-native structured data playground by Chaitanya Prabuddha.",
+  },
 };
 
 export default function RootLayout({
@@ -27,17 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${display.variable} ${mono.variable}`}>
-      <head>
-        <link
-          rel="preload"
-          href="./yq.wasm"
-          as="fetch"
-          type="application/wasm"
-          crossOrigin="anonymous"
-        />
-      </head>
       <body className="font-[family-name:var(--font-display)] antialiased">
-        <Script src="./wasm_exec.js" strategy="beforeInteractive" />
         {children}
       </body>
     </html>

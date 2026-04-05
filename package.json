@@ -1,20 +1,23 @@
 {
-  "name": "yq-wasm-playground",
+  "name": "prabuddha-engine",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:all": "npm run build:wasm && npm run build",
+    "build:all": "npm run build:engine && npm run build",
     "start": "next start",
-    "build:wasm": "bash scripts/build-wasm.sh",
+    "build:engine": "bash scripts/build-engine.sh",
     "phase1:audit": "node scripts/phase1-audit.cjs",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
-    "test:e2e": "playwright test",
-    "test:go": "node scripts/run-go.cjs test ./wasm"
+    "test:unit": "tsx --test tests/unit/**/*.test.ts",
+    "test:e2e": "npm run build:engine && playwright test",
+    "test:go": "node scripts/test-go.cjs"
   },
+  "description": "A fully static browser playground for structured document queries and format conversion.",
+  "author": "Chaitanya Prabuddha",
   "dependencies": {
     "highlight.js": "^11.11.1",
     "next": "^14.2.33",
@@ -23,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@next/bundle-analyzer": "^16.2.2",
     "@playwright/test": "^1.54.2",
     "@types/node": "^22.15.17",
     "@types/react": "^18.3.23",
@@ -34,6 +38,7 @@
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
     "typescript": "^5.8.3"
   }
 }

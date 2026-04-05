@@ -1,8 +1,10 @@
 node_modules
 .next
 out
+.codex-devserver
+.codex-devserver.pid
 playwright-report
 test-results
 .tools
-public/yq.wasm
+public/engine.wasm
 public/wasm_exec.js

@@ -1,34 +1,25 @@
-const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
+});
 
-module.exports = (phase) => {
+module.exports = withBundleAnalyzer((phase) => {
   const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
   const useGitHubPagesBasePath =
     process.env.GITHUB_ACTIONS === "true" && Boolean(repoName);
+  const basePath =
+    useGitHubPagesBasePath && repoName ? `/${repoName}` : undefined;
 
   /** @type {import('next').NextConfig} */
   const nextConfig = {
-    assetPrefix:
-      useGitHubPagesBasePath && repoName ? `/${repoName}` : undefined,
-    basePath:
-      useGitHubPagesBasePath && repoName ? `/${repoName}` : undefined,
+    assetPrefix: basePath,
+    basePath,
+    env: {
+      NEXT_PUBLIC_BASE_PATH: basePath ?? "",
+    },
     output: "export",
     reactStrictMode: true,
     trailingSlash: true,
   };
 
-  if (phase === PHASE_DEVELOPMENT_SERVER) {
-    nextConfig.headers = async () => [
-      {
-        source: "/yq.wasm",
-        headers: [
-          {
-            key: "Content-Type",
-            value: "application/wasm",
-          },
-        ],
-      },
-    ];
-  }
-
   return nextConfig;
-};
+});

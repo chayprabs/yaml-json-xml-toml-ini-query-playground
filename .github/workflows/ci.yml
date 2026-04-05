@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
+
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Build browser engine assets
+        run: bash scripts/build-engine.sh
+
+      - name: Run Go tests
+        run: npm run test:go
+
+      - name: Go vet
+        run: node scripts/run-go.cjs vet ./...
+
+      - name: Install staticcheck
+        run: node scripts/run-go.cjs install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run staticcheck
+        run: |
+          STATICCHECK="$(node scripts/run-go.cjs env GOPATH | tr -d '\r')/bin/staticcheck"
+          "$STATICCHECK" ./...
+
+      - name: Typecheck
+        run: npx tsc --noEmit --strict
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run end-to-end tests
+        run: npm run test:e2e
+
+      - name: Build static export
+        run: npm run build

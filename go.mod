@@ -1,9 +1,9 @@
-module yq-wasm-playground
+module prabuddha-engine
 
 go 1.25.0
 
 require (
-	github.com/mikefarah/yq/v4 v4.0.0
+	enginecore v0.0.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.3
 )
 
@@ -34,6 +34,7 @@ require (
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
+	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473 // indirect
 )
 
-replace github.com/mikefarah/yq/v4 => ./yq
+replace enginecore => C:/Users/chait/.codex-deps/enginecore
