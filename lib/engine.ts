@@ -600,7 +600,14 @@ function registerTestControls() {
   const benchmarkMode = new URLSearchParams(window.location.search).has(
     "__bench",
   );
-  if (process.env.NODE_ENV === "production" && !benchmarkMode) {
+  const runningUnderAutomation =
+    typeof navigator !== "undefined" && navigator.webdriver === true;
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    !benchmarkMode &&
+    !runningUnderAutomation
+  ) {
     return;
   }
 
