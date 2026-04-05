@@ -4,8 +4,18 @@ const path = require("node:path");
 const { TextDecoder, TextEncoder } = require("node:util");
 const { performance } = require("node:perf_hooks");
 const { webcrypto } = require("node:crypto");
+const { getGoRoot } = require("./setup-wasm-exec.cjs");
 
 const repoRoot = path.resolve(__dirname, "..");
+let resolvedGoRoot = process.env.GOROOT ?? "";
+
+if (!resolvedGoRoot) {
+  try {
+    resolvedGoRoot = getGoRoot();
+  } catch {
+    resolvedGoRoot = "";
+  }
+}
 
 if (process.argv.length < 3) {
   process.stderr.write("usage: go-js-wasm-exec [wasm binary] [arguments]\n");
@@ -13,8 +23,8 @@ if (process.argv.length < 3) {
 }
 
 const candidates = [
-  path.join(process.env.GOROOT ?? "", "lib", "wasm", "wasm_exec.js"),
-  path.join(process.env.GOROOT ?? "", "misc", "wasm", "wasm_exec.js"),
+  path.join(resolvedGoRoot, "lib", "wasm", "wasm_exec.js"),
+  path.join(resolvedGoRoot, "misc", "wasm", "wasm_exec.js"),
   path.join(
     process.env.USERPROFILE ?? "",
     ".codex-toolchains",

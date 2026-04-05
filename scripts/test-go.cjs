@@ -1,6 +1,6 @@
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
-const { setupWasmExec } = require("./setup-wasm-exec.cjs");
+const { getGoRoot, setupWasmExec } = require("./setup-wasm-exec.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const packages = ["./wasm/yq", "./wasm/dasel"];
@@ -67,6 +67,7 @@ function main() {
     ...process.env,
     GOARCH: "wasm",
     GOOS: "js",
+    GOROOT: getGoRoot(),
   };
 
   return runNodeCommand(

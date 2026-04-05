@@ -60,4 +60,4 @@ if (require.main === module) {
   process.stdout.write(`${setupWasmExec()}\n`);
 }
 
-module.exports = { setupWasmExec };
+module.exports = { getGoRoot, setupWasmExec };
