@@ -5,6 +5,8 @@ const webServerCommand =
   process.platform === "win32"
     ? "node scripts/serve-static.cjs"
     : "exec node scripts/serve-static.cjs";
+const reuseExistingServer =
+  !process.env.CI || process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1";
 
 export default defineConfig({
   testDir: "./tests",
@@ -32,7 +34,7 @@ export default defineConfig({
     stderr: "pipe",
     stdout: "pipe",
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
     timeout: 30_000,
   },
   projects: [
