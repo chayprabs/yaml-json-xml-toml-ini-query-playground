@@ -12,7 +12,7 @@
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
-    "test:unit": "tsx --test tests/unit/**/*.test.ts",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
     "test:e2e": "npm run build:engine && playwright test",
     "test:go": "node scripts/test-go.cjs"
   },
