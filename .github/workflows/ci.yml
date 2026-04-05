@@ -29,6 +29,9 @@ jobs:
       - name: Build browser engine assets
         run: bash scripts/build-engine.sh
 
+      - name: Download wasm_exec.js
+        run: curl -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
+
       - name: Run Go tests
         run: npm run test:go
 
