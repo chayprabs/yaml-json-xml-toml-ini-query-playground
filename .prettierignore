@@ -3,5 +3,8 @@
 node_modules
 out
 public/wasm_exec.js
-public/engine.wasm
+public/engine-yq.wasm
+public/engine-yq.wasm.gz
+public/engine-dasel.wasm
+public/engine-dasel.wasm.gz
 test-results

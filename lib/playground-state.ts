@@ -1,29 +1,41 @@
 import {
-  INPUT_FORMATS,
-  OUTPUT_FORMATS,
+  isEngineType,
+  isInputFormat,
+  isOutputFormat,
+  supportsInputFormat,
+  supportsOutputFormat,
+  type EngineEvaluateOptions,
+  type EngineType,
   type InputFormat,
   type OutputFormat,
 } from "@/lib/engine-types";
 
 export type Example = {
-  id: string;
-  label: string;
   description: string;
+  engine: EngineType;
   expression: string;
+  id: string;
   input: string;
   inputFormat: InputFormat;
+  label: string;
+  options?: Partial<Pick<PlaygroundState, "returnRoot" | "unstable">>;
   outputFormat: OutputFormat;
 };
 
 export type PlaygroundState = {
   autoRun: boolean;
+  engine: EngineType;
   expression: string;
   input: string;
   inputFormat: InputFormat;
   noDoc: boolean;
   outputFormat: OutputFormat;
   prettyPrint: boolean;
+  readFlagsText: string;
+  returnRoot: boolean;
+  unstable: boolean;
   unwrapScalar: boolean;
+  writeFlagsText: string;
 };
 
 export type RunSnapshot = Omit<PlaygroundState, "autoRun">;
@@ -31,6 +43,17 @@ export type RunSnapshot = Omit<PlaygroundState, "autoRun">;
 export const HASH_SYNC_DELAY_MS = 250;
 export const AUTO_RUN_DELAY_MS = 600;
 export const MAX_SHAREABLE_HASH_LENGTH = 4_000;
+
+export const ENGINE_PLACEHOLDERS: Record<EngineType, string> = {
+  yq: ".metadata.name",
+  dasel: "server.http_port",
+};
+
+export const ENGINE_SYNTAX_HINTS: Record<EngineType, string> = {
+  yq: 'yq expression example: .services[] | select(.enabled == true) | .name',
+  dasel:
+    'dasel selector example: services.[name = "worker"].image or server.http_port',
+};
 
 const hashEncoder = new TextEncoder();
 const hashDecoder = new TextDecoder();
@@ -40,6 +63,7 @@ export const examples: Example[] = [
     id: "k8s",
     label: "Kubernetes deployment",
     description: "Pull a deployment name from a realistic workload manifest.",
+    engine: "yq",
     expression: ".metadata.name",
     inputFormat: "yaml",
     outputFormat: "yaml",
@@ -70,6 +94,7 @@ spec:
     id: "compose",
     label: "Docker Compose services",
     description: "List service names from a multi-service Compose stack.",
+    engine: "yq",
     expression: ".services | keys",
     inputFormat: "yaml",
     outputFormat: "yaml",
@@ -89,6 +114,7 @@ services:
     id: "gha",
     label: "GitHub Actions workflow",
     description: "Inspect reusable actions in a CI workflow file.",
+    engine: "yq",
     expression: ".jobs.build.steps[].uses",
     inputFormat: "yaml",
     outputFormat: "yaml",
@@ -108,57 +134,99 @@ jobs:
       - run: npm test`,
   },
   {
-    id: "json-select",
-    label: "Large JSON entries",
-    description: "Filter object entries with values above a threshold.",
-    expression: ". | to_entries | .[] | select(.value > 100)",
-    inputFormat: "json",
+    id: "ini-read",
+    label: "INI configuration lookup",
+    description:
+      "Read a sectioned INI config natively, which the yq engine cannot parse.",
+    engine: "dasel",
+    expression: "server.http_port",
+    inputFormat: "ini",
     outputFormat: "yaml",
-    input: `{
-  "bronze": 24,
-  "silver": 118,
-  "gold": 340,
-  "platinum": 99
+    input: `app_mode = production
+
+[server]
+http_port = 9999
+graceful_timeout = 30
+`,
+  },
+  {
+    id: "search-selector",
+    label: "Search by sibling value",
+    description:
+      "Use a dasel search selector to find one object by value without jq-style filters.",
+    engine: "dasel",
+    expression: 'services.[name = "worker"].image',
+    inputFormat: "yaml",
+    outputFormat: "yaml",
+    input: `services:
+  - name: web
+    image: nginx:1.27
+    replicas: 2
+  - name: worker
+    image: ghcr.io/example/worker:2.4.1
+    replicas: 1
+  - name: cron
+    image: ghcr.io/example/cron:1.3.0
+    replicas: 1`,
+  },
+  {
+    id: "mutate-root",
+    label: "Modify and return root",
+    description:
+      "Apply a dasel assignment and return the modified document instead of only the assigned node.",
+    engine: "dasel",
+    expression: 'service.image = "ghcr.io/example/api:2.1.0"',
+    inputFormat: "yaml",
+    outputFormat: "json",
+    options: {
+      returnRoot: true,
+    },
+    input: `service:
+  image: ghcr.io/example/api:1.9.3
+  replicas: 3
+  region: ap-south-1`,
+  },
+  {
+    id: "hcl-convert",
+    label: "HCL to JSON conversion",
+    description:
+      "Convert Terraform-style HCL to JSON, a format pair that only the dasel engine offers here.",
+    engine: "dasel",
+    expression: ".",
+    inputFormat: "hcl",
+    outputFormat: "json",
+    input: `resource "aws_s3_bucket" "assets" {
+  bucket = "pluck-assets"
+  acl    = "private"
 }`,
-  },
-  {
-    id: "yaml-array",
-    label: "YAML array names",
-    description: "Map over a simple YAML array and print the names.",
-    expression: ".[] | .name",
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `- name: Ada
-  role: engineer
-- name: Grace
-  role: architect
-- name: Linus
-  role: operator`,
-  },
-  {
-    id: "redact",
-    label: "Redact a secret",
-    description: "Remove a password field from an app configuration file.",
-    expression: "del(.password)",
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `username: admin
-password: super-secret
-region: us-east-1
-retries: 3`,
   },
 ];
 
+export function getExamplesForEngine(engine: EngineType): Example[] {
+  return examples.filter((example) => example.engine === engine);
+}
+
+export function getDefaultExample(engine: EngineType): Example {
+  return getExamplesForEngine(engine)[0] ?? examples[0];
+}
+
 export function createDefaultState(): PlaygroundState {
+  const example = getDefaultExample("yq");
+
   return {
     autoRun: true,
-    expression: examples[0].expression,
-    input: examples[0].input,
-    inputFormat: examples[0].inputFormat,
+    engine: example.engine,
+    expression: example.expression,
+    input: example.input,
+    inputFormat: example.inputFormat,
     noDoc: false,
-    outputFormat: examples[0].outputFormat,
+    outputFormat: example.outputFormat,
     prettyPrint: false,
+    readFlagsText: "",
+    returnRoot: false,
+    unstable: false,
     unwrapScalar: true,
+    writeFlagsText: "",
   };
 }
 
@@ -166,21 +234,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-export function isInputFormat(value: unknown): value is InputFormat {
-  return (
-    typeof value === "string" && INPUT_FORMATS.includes(value as InputFormat)
-  );
-}
-
-export function isOutputFormat(value: unknown): value is OutputFormat {
-  return (
-    typeof value === "string" && OUTPUT_FORMATS.includes(value as OutputFormat)
-  );
-}
-
 export function encodeHashState(state: PlaygroundState): string {
   const json = JSON.stringify({
-    version: 1,
+    version: 2,
     ...state,
   });
   let binary = "";
@@ -219,6 +275,10 @@ export function decodeHashState(hash: string): Partial<PlaygroundState> | null {
 
     const nextState: Partial<PlaygroundState> = {};
 
+    if (isEngineType(parsed.engine)) {
+      nextState.engine = parsed.engine;
+    }
+
     if (typeof parsed.expression === "string") {
       nextState.expression = parsed.expression;
     }
@@ -251,41 +311,105 @@ export function decodeHashState(hash: string): Partial<PlaygroundState> | null {
       nextState.autoRun = parsed.autoRun;
     }
 
+    if (typeof parsed.returnRoot === "boolean") {
+      nextState.returnRoot = parsed.returnRoot;
+    }
+
+    if (typeof parsed.unstable === "boolean") {
+      nextState.unstable = parsed.unstable;
+    }
+
+    if (typeof parsed.readFlagsText === "string") {
+      nextState.readFlagsText = parsed.readFlagsText;
+    }
+
+    if (typeof parsed.writeFlagsText === "string") {
+      nextState.writeFlagsText = parsed.writeFlagsText;
+    }
+
     return nextState;
   } catch {
     return null;
   }
 }
 
-export function supportsNoDoc(outputFormat: OutputFormat): boolean {
-  return outputFormat === "yaml";
+export function supportsNoDoc(
+  engine: EngineType,
+  outputFormat: OutputFormat,
+): boolean {
+  return engine === "yq" && outputFormat === "yaml";
 }
 
-export function supportsPrettyPrint(outputFormat: OutputFormat): boolean {
-  return outputFormat === "yaml";
+export function supportsPrettyPrint(
+  engine: EngineType,
+  outputFormat: OutputFormat,
+): boolean {
+  return engine === "yq" && outputFormat === "yaml";
 }
 
-export function supportsUnwrapScalar(outputFormat: OutputFormat): boolean {
+export function supportsUnwrapScalar(
+  engine: EngineType,
+  outputFormat: OutputFormat,
+): boolean {
   return (
-    outputFormat === "yaml" ||
-    outputFormat === "json" ||
-    outputFormat === "props"
+    engine === "yq" &&
+    (outputFormat === "yaml" ||
+      outputFormat === "json" ||
+      outputFormat === "props")
   );
 }
 
-export function createRunSnapshot(state: PlaygroundState): RunSnapshot {
+export function normalizeFormatsForEngine(
+  state: PlaygroundState,
+): PlaygroundState {
+  const example = getDefaultExample(state.engine);
+
   return {
-    expression: state.expression,
-    input: state.input,
-    inputFormat: state.inputFormat,
-    noDoc: supportsNoDoc(state.outputFormat) ? state.noDoc : false,
-    outputFormat: state.outputFormat,
-    prettyPrint: supportsPrettyPrint(state.outputFormat)
-      ? state.prettyPrint
+    ...state,
+    inputFormat: supportsInputFormat(state.engine, state.inputFormat)
+      ? state.inputFormat
+      : example.inputFormat,
+    outputFormat: supportsOutputFormat(state.engine, state.outputFormat)
+      ? state.outputFormat
+      : example.outputFormat,
+  };
+}
+
+export function createRunSnapshot(state: PlaygroundState): RunSnapshot {
+  const normalizedState = normalizeFormatsForEngine(state);
+
+  return {
+    engine: normalizedState.engine,
+    expression: normalizedState.expression,
+    input: normalizedState.input,
+    inputFormat: normalizedState.inputFormat,
+    noDoc: supportsNoDoc(
+      normalizedState.engine,
+      normalizedState.outputFormat,
+    )
+      ? normalizedState.noDoc
       : false,
-    unwrapScalar: supportsUnwrapScalar(state.outputFormat)
-      ? state.unwrapScalar
+    outputFormat: normalizedState.outputFormat,
+    prettyPrint: supportsPrettyPrint(
+      normalizedState.engine,
+      normalizedState.outputFormat,
+    )
+      ? normalizedState.prettyPrint
       : false,
+    readFlagsText:
+      normalizedState.engine === "dasel" ? normalizedState.readFlagsText : "",
+    returnRoot:
+      normalizedState.engine === "dasel" ? normalizedState.returnRoot : false,
+    unstable:
+      normalizedState.engine === "dasel" ? normalizedState.unstable : false,
+    unwrapScalar: supportsUnwrapScalar(
+      normalizedState.engine,
+      normalizedState.outputFormat,
+    )
+      ? normalizedState.unwrapScalar
+      : false,
+    writeFlagsText:
+      normalizedState.engine === "dasel" ? normalizedState.writeFlagsText : "",
   };
 }
 
@@ -294,7 +418,61 @@ export function serializeRunSnapshot(snapshot: RunSnapshot): string {
 }
 
 export function canAutoRun(snapshot: RunSnapshot): boolean {
-  return (
-    snapshot.expression.trim().length > 0 && snapshot.input.trim().length > 0
-  );
+  if (snapshot.expression.trim().length === 0) {
+    return false;
+  }
+
+  if (snapshot.engine === "dasel") {
+    return true;
+  }
+
+  return snapshot.input.trim().length > 0;
+}
+
+export function parseFlagMap(flagText: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const segments = flagText
+    .split(/\r?\n|,/u)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  for (const segment of segments) {
+    const separatorIndex = segment.indexOf("=");
+    if (separatorIndex <= 0 || separatorIndex === segment.length - 1) {
+      throw new Error(
+        `Invalid dasel flag ${JSON.stringify(segment)}. Use key=value pairs separated by commas or new lines.`,
+      );
+    }
+
+    const key = segment.slice(0, separatorIndex).trim();
+    const value = segment.slice(separatorIndex + 1).trim();
+    if (!key || !value) {
+      throw new Error(
+        `Invalid dasel flag ${JSON.stringify(segment)}. Use key=value pairs separated by commas or new lines.`,
+      );
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
+export function createEngineEvaluateOptions(
+  snapshot: RunSnapshot,
+): EngineEvaluateOptions {
+  if (snapshot.engine === "yq") {
+    return {
+      noDoc: snapshot.noDoc,
+      prettyPrint: snapshot.prettyPrint,
+      unwrapScalar: snapshot.unwrapScalar,
+    };
+  }
+
+  return {
+    readFlags: parseFlagMap(snapshot.readFlagsText),
+    returnRoot: snapshot.returnRoot,
+    unstable: snapshot.unstable,
+    writeFlags: parseFlagMap(snapshot.writeFlagsText),
+  };
 }

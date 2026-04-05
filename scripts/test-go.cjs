@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const rootDir = path.resolve(__dirname, "..");
 const execWrapperWindows = path.join(__dirname, "go-js-wasm-exec.cmd");
+const packages = ["./wasm/yq", "./wasm/dasel"];
 
 function resolveGoWasmExec() {
   const gorootResult = spawnSync(
@@ -41,7 +42,7 @@ const execPath =
 
 const hostResult = spawnSync(
   process.execPath,
-  [path.join(__dirname, "run-go.cjs"), "test", "./wasm"],
+  [path.join(__dirname, "run-go.cjs"), "test", ...packages],
   {
     cwd: rootDir,
     stdio: "inherit",
@@ -60,7 +61,7 @@ const wasmEnv = {
 
 const wasmResult = spawnSync(
   process.execPath,
-  [path.join(__dirname, "run-go.cjs"), "test", "-exec", execPath, "./wasm"],
+  [path.join(__dirname, "run-go.cjs"), "test", "-exec", execPath, ...packages],
   {
     cwd: rootDir,
     env: wasmEnv,

@@ -15,6 +15,7 @@ if (!languagesRegistered) {
   hljs.registerLanguage("yaml", yamlLanguage);
   hljs.registerLanguage("json", jsonLanguage);
   hljs.registerLanguage("xml", xmlLanguage);
+  hljs.registerLanguage("ini", iniLanguage);
   hljs.registerLanguage("toml", iniLanguage);
   hljs.registerLanguage("properties", propertiesLanguage);
   hljs.registerLanguage("plaintext", plaintextLanguage);

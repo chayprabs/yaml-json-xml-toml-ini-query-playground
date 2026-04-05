@@ -21,8 +21,11 @@ export function getHighlightLanguage(outputFormat: OutputFormat): string {
       return "xml";
     case "toml":
       return "toml";
+    case "ini":
+      return "ini";
     case "props":
       return "properties";
+    case "hcl":
     case "csv":
     default:
       return "plaintext";

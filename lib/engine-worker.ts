@@ -1,13 +1,12 @@
 /// <reference lib="webworker" />
 
 import { getAssetPath } from "@/lib/asset-path";
-import {
-  normalizeEngineError,
-  toFriendlyEvaluationErrorMessage,
-} from "@/lib/engine-errors";
+import { normalizeEngineError, toFriendlyEvaluationErrorMessage } from "@/lib/engine-errors";
+import { ENGINE_RUNTIME_CONFIG } from "@/lib/engine-registry";
 import type {
   EngineEvaluateOptions,
   EngineInitStatus,
+  EngineType,
   InputFormat,
   OutputFormat,
 } from "@/lib/engine-types";
@@ -18,13 +17,12 @@ type GoRuntime = {
 };
 
 type WorkerInitMessage = {
+  engine: EngineType;
   testDisableWebAssembly?: boolean;
   type: "init";
 };
 
 type WorkerEvaluateMessage = {
-  type: "evaluate";
-  requestId: number;
   payload: {
     expression: string;
     input: string;
@@ -32,6 +30,8 @@ type WorkerEvaluateMessage = {
     options: EngineEvaluateOptions;
     outputFormat: OutputFormat;
   };
+  requestId: number;
+  type: "evaluate";
 };
 
 type WorkerTestPanicMessage = {
@@ -50,21 +50,21 @@ type WorkerRequest =
   | WorkerTestPanicMessage;
 
 type WorkerStatusMessage = {
-  type: "status";
   message?: string;
   status: EngineInitStatus;
+  type: "status";
 };
 
 type WorkerEvaluateSuccessMessage = {
-  type: "evaluate-success";
   output: string;
   requestId: number;
+  type: "evaluate-success";
 };
 
 type WorkerEvaluateErrorMessage = {
-  type: "evaluate-error";
   message: string;
   requestId: number;
+  type: "evaluate-error";
 };
 
 type WorkerResponse =
@@ -72,24 +72,19 @@ type WorkerResponse =
   | WorkerEvaluateSuccessMessage
   | WorkerStatusMessage;
 
+type WorkerEvaluateFn = (
+  input: string,
+  expression: string,
+  inputFormat: InputFormat,
+  outputFormat: OutputFormat,
+  options?: Partial<EngineEvaluateOptions>,
+) => string;
+
 declare global {
   interface WorkerGlobalScope {
     Go?: new () => GoRuntime;
-    engineEvaluate?: (
-      input: string,
-      expression: string,
-      inputFormat: InputFormat,
-      outputFormat: OutputFormat,
-    ) => string;
-    engineEvaluateWithOptions?: (
-      input: string,
-      expression: string,
-      inputFormat: InputFormat,
-      outputFormat: OutputFormat,
-      options?: Partial<EngineEvaluateOptions> & {
-        __debugPanic?: boolean;
-      },
-    ) => string;
+    daselEvaluateWithOptions?: WorkerEvaluateFn;
+    yqEvaluateWithOptions?: WorkerEvaluateFn;
   }
 }
 
@@ -97,8 +92,9 @@ const globalScope = self as DedicatedWorkerGlobalScope;
 
 const REGISTRATION_TIMEOUT_MS = 15_000;
 
-let initPromise: Promise<void> | null = null;
+let activeEngine: EngineType | null = null;
 let disableWebAssemblyForTest = false;
+let initPromise: Promise<void> | null = null;
 let nextEvaluationDelayMs = 0;
 let panicNextEvaluation = false;
 
@@ -112,6 +108,24 @@ function setInitStatus(status: EngineInitStatus, message?: string) {
     ...(message ? { message } : {}),
     status,
   });
+}
+
+function getEngineConfig() {
+  if (!activeEngine) {
+    throw new Error("No engine has been selected for this worker.");
+  }
+
+  return ENGINE_RUNTIME_CONFIG[activeEngine];
+}
+
+function getEvaluator(): WorkerEvaluateFn | null {
+  if (!activeEngine) {
+    return null;
+  }
+
+  const evaluatorName = getEngineConfig().evaluateWithOptionsGlobal;
+  const candidate = globalScope[evaluatorName];
+  return typeof candidate === "function" ? candidate : null;
 }
 
 async function ensureRuntimeScript(): Promise<void> {
@@ -141,10 +155,11 @@ async function instantiateModule(
     );
   }
 
+  const { wasmFileName, wasmGzipFileName } = getEngineConfig();
   setInitStatus("fetching-wasm");
 
   async function fetchRawWasm() {
-    const rawResponse = await fetch(getAssetPath("engine.wasm"), {
+    const rawResponse = await fetch(getAssetPath(wasmFileName), {
       cache: "force-cache",
     });
     if (!rawResponse.ok) {
@@ -163,7 +178,7 @@ async function instantiateModule(
     }
 
     try {
-      const compressedResponse = await fetch(getAssetPath("engine.wasm.gz"), {
+      const compressedResponse = await fetch(getAssetPath(wasmGzipFileName), {
         cache: "force-cache",
       });
       if (!compressedResponse.ok || !compressedResponse.body) {
@@ -200,8 +215,8 @@ async function instantiateModule(
       );
       return streamingResult.instance;
     } catch {
-      // Fall back when streaming compilation is unavailable or the response
-      // content type is not application/wasm.
+      // Fall back when streaming compilation is unavailable or the content type
+      // is not application/wasm.
     }
   }
 
@@ -221,7 +236,7 @@ async function waitForEvaluator(
 ): Promise<void> {
   const startedAt = performance.now();
 
-  while (typeof globalScope.engineEvaluateWithOptions !== "function") {
+  while (!getEvaluator()) {
     if (performance.now() - startedAt > timeoutMs) {
       throw new Error("Failed to start the expression engine. Please refresh.");
     }
@@ -231,7 +246,7 @@ async function waitForEvaluator(
 }
 
 async function initEngine(): Promise<void> {
-  if (typeof globalScope.engineEvaluateWithOptions === "function") {
+  if (getEvaluator()) {
     setInitStatus("ready");
     return;
   }
@@ -282,7 +297,8 @@ function handleEvaluateMessage(message: WorkerEvaluateMessage) {
     try {
       await initEngine();
 
-      if (typeof globalScope.engineEvaluateWithOptions !== "function") {
+      const evaluator = getEvaluator();
+      if (!evaluator || !activeEngine) {
         throw new Error("The browser engine is not ready yet.");
       }
 
@@ -292,7 +308,7 @@ function handleEvaluateMessage(message: WorkerEvaluateMessage) {
         );
       }
 
-      const output = globalScope.engineEvaluateWithOptions(
+      const output = evaluator(
         message.payload.input,
         message.payload.expression,
         message.payload.inputFormat,
@@ -316,6 +332,7 @@ function handleEvaluateMessage(message: WorkerEvaluateMessage) {
         message: toFriendlyEvaluationErrorMessage(
           normalizedError.message,
           message.payload.inputFormat,
+          activeEngine ?? "yq",
         ),
         requestId: message.requestId,
         type: "evaluate-error",
@@ -332,6 +349,7 @@ globalScope.addEventListener(
   (event: MessageEvent<WorkerRequest>) => {
     switch (event.data.type) {
       case "init":
+        activeEngine = event.data.engine;
         disableWebAssemblyForTest = event.data.testDisableWebAssembly === true;
         void initEngine();
         break;
