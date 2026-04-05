@@ -2,7 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 const host = process.env.PLAYGROUND_HOST ?? "127.0.0.1";
 const port = process.env.PLAYGROUND_PORT ?? "3000";
-const baseURL = process.env.PLAYGROUND_BASE_URL ?? `http://${host}:${port}`;
+const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
+const basePath =
+  process.env.GITHUB_ACTIONS === "true" && repoName ? `/${repoName}` : "";
+const baseURL =
+  process.env.PLAYGROUND_BASE_URL ?? `http://${host}:${port}${basePath}`;
 
 export default defineConfig({
   testDir: "./tests",
