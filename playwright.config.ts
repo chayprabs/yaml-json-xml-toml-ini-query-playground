@@ -25,7 +25,7 @@ export default defineConfig({
     command: `npm run dev -- --hostname ${host} --port ${port}`,
     url: baseURL,
     reuseExistingServer: true,
-    timeout: 120000,
+    timeout: 300_000,
   },
   projects: [
     {
