@@ -36,6 +36,7 @@ rm -f \
   "$ROOT_DIR/public/engine.wasm.gz"
 
 pushd "$ROOT_DIR" >/dev/null
+curl -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
 if [[ "$NODE_BIN" == *.exe ]]; then
   ROOT_DIR_WIN="$ROOT_DIR_FOR_NODE"
 
@@ -53,46 +54,12 @@ if [[ "$NODE_BIN" == *.exe ]]; then
     foreach (\$build in \$builds) { \
       & \$go build -ldflags='-s -w' -o (Join-Path \$root \$build.Out) \$build.Pkg; \
     }; \
-    \$goroot=& \$go env GOROOT; \
-    \$candidates=@((Join-Path \$goroot 'lib\\wasm\\wasm_exec.js'), (Join-Path \$goroot 'misc\\wasm\\wasm_exec.js')); \
-    \$src=\$candidates | Where-Object { Test-Path \$_ } | Select-Object -First 1; \
-    if (-not \$src) { throw \"wasm_exec.js not found under GOROOT: \$goroot\" }; \
-    Copy-Item -Path \$src -Destination (Join-Path \$root 'public\\wasm_exec.js') -Force;\
   "
 else
   GOOS=js GOARCH=wasm "$NODE_BIN" "$RUN_GO_SCRIPT_FOR_NODE" build "-ldflags=-s -w" -o "$ROOT_DIR_FOR_NODE/public/engine-yq.wasm" ./wasm/yq
   GOOS=js GOARCH=wasm "$NODE_BIN" "$RUN_GO_SCRIPT_FOR_NODE" build "-ldflags=-s -w" -o "$ROOT_DIR_FOR_NODE/public/engine-dasel.wasm" ./wasm/dasel
-  GOROOT="$("$NODE_BIN" "$RUN_GO_SCRIPT_FOR_NODE" env GOROOT | tr -d '\r')"
 fi
 popd >/dev/null
-
-if [[ "$NODE_BIN" == *.exe ]]; then
-  :
-elif [[ "$GOROOT" == [A-Za-z]:* ]]; then
-  ROOT_DIR_WIN="$ROOT_DIR"
-
-  if command -v cygpath >/dev/null 2>&1; then
-    ROOT_DIR_WIN="$(cygpath -w "$ROOT_DIR")"
-  elif pwd -W >/dev/null 2>&1; then
-    ROOT_DIR_WIN="$(cd "$ROOT_DIR" && pwd -W)"
-  fi
-
-  powershell.exe -NoProfile -Command "\$goroot='$GOROOT'; \$root='$ROOT_DIR_WIN'; \$candidates=@((Join-Path \$goroot 'lib\\wasm\\wasm_exec.js'), (Join-Path \$goroot 'misc\\wasm\\wasm_exec.js')); \$src=\$candidates | Where-Object { Test-Path \$_ } | Select-Object -First 1; if (-not \$src) { throw \"wasm_exec.js not found under GOROOT: \$goroot\" }; Copy-Item -Path \$src -Destination (Join-Path \$root 'public\\wasm_exec.js') -Force"
-else
-  GOROOT_PATH="${GOROOT//\\//}"
-  WASM_EXEC_SRC="$GOROOT_PATH/lib/wasm/wasm_exec.js"
-
-  if [[ ! -f "$WASM_EXEC_SRC" ]]; then
-    WASM_EXEC_SRC="$GOROOT_PATH/misc/wasm/wasm_exec.js"
-  fi
-
-  if [[ ! -f "$WASM_EXEC_SRC" ]]; then
-    echo "wasm_exec.js not found under GOROOT: $GOROOT" >&2
-    exit 1
-  fi
-
-  cp "$WASM_EXEC_SRC" "$ROOT_DIR/public/wasm_exec.js"
-fi
 
 for engine_name in "${ENGINE_NAMES[@]}"; do
   wasm_path="$ROOT_DIR/public/${engine_name}.wasm"
