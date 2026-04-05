@@ -8,6 +8,7 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: ["**/*.spec.ts"],
   fullyParallel: true,
+  workers: 4,
   retries: 0,
   reporter: "list",
   use: {
