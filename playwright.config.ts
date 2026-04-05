@@ -22,7 +22,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `npx serve out -p ${port} -c serve.json`,
+    command: `npx serve out -p ${port} -c ../serve.json`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
