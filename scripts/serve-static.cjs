@@ -25,32 +25,40 @@ if (!fs.existsSync(root)) {
   process.exit(1);
 }
 
-http
-  .createServer((req, res) => {
-    const urlPath = req.url.split("?")[0];
-    let filePath = path.join(root, urlPath);
+const server = http.createServer((req, res) => {
+  const urlPath = req.url.split("?")[0];
+  let filePath = path.join(root, urlPath);
 
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
-      filePath = path.join(filePath, "index.html");
-    }
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(filePath, "index.html");
+  }
 
-    if (!fs.existsSync(filePath)) {
-      filePath = path.join(root, "index.html");
-    }
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(root, "index.html");
+  }
 
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = MIME[ext] || "application/octet-stream";
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME[ext] || "application/octet-stream";
 
-    try {
-      const content = fs.readFileSync(filePath);
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content);
-    } catch (err) {
-      res.writeHead(500);
-      res.end("Server error");
-    }
-  })
-  .listen(port, "127.0.0.1", () => {
-    console.log("Static server ready on http://127.0.0.1:" + port);
-    console.log("Serving from: " + root);
+  try {
+    const content = fs.readFileSync(filePath);
+    res.writeHead(200, { "Content-Type": contentType });
+    res.end(content);
+  } catch (err) {
+    res.writeHead(500);
+    res.end("Server error");
+  }
+});
+server.listen(port, "127.0.0.1", () => {
+  console.log("Static server ready on http://127.0.0.1:" + port);
+  console.log("Serving from: " + root);
+});
+
+function shutdown() {
+  server.close(() => {
+    process.exit(0);
   });
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

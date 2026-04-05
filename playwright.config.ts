@@ -21,6 +21,12 @@ export default defineConfig({
   },
   webServer: {
     command: "node scripts/serve-static.cjs",
+    gracefulShutdown: {
+      signal: "SIGTERM",
+      timeout: 5_000,
+    },
+    stderr: "pipe",
+    stdout: "pipe",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
