@@ -147,6 +147,8 @@ const engineStates = Object.fromEntries(
 ) as Record<EngineType, ManagedEngineState>;
 
 let initAllPromise: Promise<void> | null = null;
+let browserTeardownStarted = false;
+let browserTeardownListenerRegistered = false;
 
 function buildSnapshot(): EngineInitSnapshot {
   const engines = Object.fromEntries(
@@ -184,6 +186,16 @@ function notifyInitListeners() {
 
 function clearCombinedInitPromise() {
   initAllPromise = null;
+}
+
+function clearPendingEvaluationTimeouts(engine: EngineType) {
+  const state = engineStates[engine];
+
+  for (const pendingEvaluation of state.pendingEvaluations.values()) {
+    globalThis.clearTimeout(pendingEvaluation.timeoutId);
+  }
+
+  state.pendingEvaluations.clear();
 }
 
 function setEngineStatus(
@@ -252,6 +264,27 @@ function rejectPendingEvaluations(engine: EngineType, error: Error) {
   }
 }
 
+function beginBrowserTeardown() {
+  if (browserTeardownStarted) {
+    return;
+  }
+
+  browserTeardownStarted = true;
+  clearCombinedInitPromise();
+
+  for (const engine of ENGINE_TYPES) {
+    const state = engineStates[engine];
+    clearWorker(engine);
+    clearPendingEvaluationTimeouts(engine);
+    state.error = null;
+    state.initPromise = null;
+    state.initPromiseReject = null;
+    state.initPromiseResolve = null;
+    state.initStarted = false;
+    state.status = "idle";
+  }
+}
+
 function clearWorker(engine: EngineType) {
   const state = engineStates[engine];
   if (state.worker) {
@@ -265,6 +298,18 @@ function handleWorkerFailure(
   message: string,
   options?: { restart: boolean },
 ) {
+  if (browserTeardownStarted) {
+    const state = engineStates[engine];
+    clearWorker(engine);
+    clearPendingEvaluationTimeouts(engine);
+    state.error = null;
+    state.initPromise = null;
+    state.initPromiseReject = null;
+    state.initPromiseResolve = null;
+    state.initStarted = false;
+    return;
+  }
+
   const error = new Error(message);
   const state = engineStates[engine];
 
@@ -402,6 +447,10 @@ function markCombinedInitStart() {
 }
 
 function startWorkerInit(engine: EngineType) {
+  if (browserTeardownStarted) {
+    return;
+  }
+
   const state = engineStates[engine];
   if (state.initStarted) {
     return;
@@ -575,6 +624,7 @@ export async function delayNextEvaluationForTest(
 
 export function __resetEngineStateForTest() {
   clearCombinedInitPromise();
+  browserTeardownStarted = false;
 
   for (const engine of ENGINE_TYPES) {
     clearWorker(engine);
@@ -627,8 +677,23 @@ function registerTestControls() {
   };
 }
 
+function registerBrowserTeardownListener() {
+  if (typeof window === "undefined" || browserTeardownListenerRegistered) {
+    return;
+  }
+
+  browserTeardownListenerRegistered = true;
+  const handlePageTeardown = () => {
+    beginBrowserTeardown();
+  };
+
+  window.addEventListener("beforeunload", handlePageTeardown, { once: true });
+  window.addEventListener("pagehide", handlePageTeardown, { once: true });
+}
+
 if (typeof window !== "undefined" && typeof Worker !== "undefined") {
   registerTestControls();
+  registerBrowserTeardownListener();
   queueMicrotask(() => {
     void initEngine().catch((error: unknown) => {
       const normalizedError = normalizeEngineError(error);
