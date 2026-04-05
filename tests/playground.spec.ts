@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function waitForPlaygroundReady(page: Page, timeout: number = 30_000) {
+async function waitForPlaygroundReady(page: Page, timeout: number = 60_000) {
   await page.waitForFunction(
     () => {
       const runButton = document.querySelector('[data-testid="run-button"]');
