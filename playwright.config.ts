@@ -2,11 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const host = process.env.PLAYGROUND_HOST ?? "127.0.0.1";
 const port = process.env.PLAYGROUND_PORT ?? "3000";
-const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
-const basePath =
-  process.env.GITHUB_ACTIONS === "true" && repoName ? `/${repoName}` : "";
-const baseURL =
-  process.env.PLAYGROUND_BASE_URL ?? `http://${host}:${port}${basePath}`;
+const baseURL = process.env.PLAYGROUND_BASE_URL ?? `http://${host}:${port}`;
 
 export default defineConfig({
   testDir: "./tests",
@@ -26,9 +22,9 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `npm run dev -- --hostname ${host} --port ${port}`,
+    command: `npx serve out -p ${port} -c ../serve.json`,
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 300_000,
   },
   projects: [
