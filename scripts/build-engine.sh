@@ -4,9 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_GO_SCRIPT="$ROOT_DIR/scripts/run-go.cjs"
 GZIP_SCRIPT="$ROOT_DIR/scripts/gzip-file.cjs"
+SETUP_WASM_EXEC_SCRIPT="$ROOT_DIR/scripts/setup-wasm-exec.cjs"
 ROOT_DIR_FOR_NODE="$ROOT_DIR"
 RUN_GO_SCRIPT_FOR_NODE="$RUN_GO_SCRIPT"
 GZIP_SCRIPT_FOR_NODE="$GZIP_SCRIPT"
+SETUP_WASM_EXEC_SCRIPT_FOR_NODE="$SETUP_WASM_EXEC_SCRIPT"
 ENGINE_NAMES=("engine-yq" "engine-dasel")
 
 if command -v node >/dev/null 2>&1; then
@@ -23,10 +25,12 @@ if [[ "$NODE_BIN" == *.exe ]]; then
     ROOT_DIR_FOR_NODE="$(wslpath -w "$ROOT_DIR")"
     RUN_GO_SCRIPT_FOR_NODE="$(wslpath -w "$RUN_GO_SCRIPT")"
     GZIP_SCRIPT_FOR_NODE="$(wslpath -w "$GZIP_SCRIPT")"
+    SETUP_WASM_EXEC_SCRIPT_FOR_NODE="$(wslpath -w "$SETUP_WASM_EXEC_SCRIPT")"
   elif command -v cygpath >/dev/null 2>&1; then
     ROOT_DIR_FOR_NODE="$(cygpath -w "$ROOT_DIR")"
     RUN_GO_SCRIPT_FOR_NODE="$(cygpath -w "$RUN_GO_SCRIPT")"
     GZIP_SCRIPT_FOR_NODE="$(cygpath -w "$GZIP_SCRIPT")"
+    SETUP_WASM_EXEC_SCRIPT_FOR_NODE="$(cygpath -w "$SETUP_WASM_EXEC_SCRIPT")"
   fi
 fi
 
@@ -36,7 +40,8 @@ rm -f \
   "$ROOT_DIR/public/engine.wasm.gz"
 
 pushd "$ROOT_DIR" >/dev/null
-curl -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
+curl -fsSL -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
+"$NODE_BIN" "$SETUP_WASM_EXEC_SCRIPT_FOR_NODE" >/dev/null
 if [[ "$NODE_BIN" == *.exe ]]; then
   ROOT_DIR_WIN="$ROOT_DIR_FOR_NODE"
 

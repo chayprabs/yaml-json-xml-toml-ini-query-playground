@@ -29,8 +29,19 @@ jobs:
       - name: Build browser engine assets
         run: bash scripts/build-engine.sh
 
-      - name: Download wasm_exec.js
-        run: curl -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
+      - name: Setup wasm_exec.js
+        run: |
+          curl -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
+          GOROOT_PATH="$(go env GOROOT)"
+          if [ -d "$GOROOT_PATH/lib/wasm" ]; then
+            TARGET_DIR="$GOROOT_PATH/lib/wasm"
+          elif [ -d "$GOROOT_PATH/misc/wasm" ]; then
+            TARGET_DIR="$GOROOT_PATH/misc/wasm"
+          else
+            TARGET_DIR="$GOROOT_PATH/lib/wasm"
+          fi
+          mkdir -p "$TARGET_DIR"
+          cp public/wasm_exec.js "$TARGET_DIR/wasm_exec.js"
 
       - name: Run Go tests
         run: npm run test:go

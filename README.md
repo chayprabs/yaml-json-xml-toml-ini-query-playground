@@ -1,141 +1,311 @@
-# Pluck
+[![Live Tool](https://img.shields.io/badge/Live%20Tool-authos.app%2Ftools%2Fpluck-0f172a?style=flat-square)](https://authos.app/tools/pluck) [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](./LICENSE) [![WebAssembly](https://img.shields.io/badge/Built%20with-WebAssembly-654ff0?style=flat-square)](https://webassembly.org/) [![Engines](https://img.shields.io/badge/engines-yq%20%2B%20dasel-64748b?style=flat-square)](#two-engines-one-tool) [![authos](https://img.shields.io/badge/part%20of-authos-111827?style=flat-square)](https://authos.app)
 
-Pluck is a fully static Next.js playground for querying, reshaping, and converting configuration documents directly in the browser through Go WebAssembly.
+# Pluck — Online YAML, JSON, XML, CSV, TOML & INI Query Playground
 
-Live tool: [authos.app/tools/pluck](https://authos.app/tools/pluck)
+**Try it live → [authos.app/tools/pluck](https://authos.app/tools/pluck)**  
+No install. No signup. No server. Runs entirely in your browser.
 
-## Features
+Pluck is a **multi format config query tool** and **yaml json xml converter browser** experience: paste structured config, run **jq for yaml online**-style **yq** expressions or **dasel selector online**, and export results without a backend. It is a **yaml query playground**, an **online yq playground**, and a **yq playground online** paired with a **dasel playground** in one tab, covering YAML, JSON, XML, CSV, TOML, and native **INI** (plus **HCL** and Java **Properties** output where the engines allow). If you want **json yaml xml online no install**, **parse yaml online free**, or a **yaml query tool no install**, this is the most complete **browser wasm yaml tool** pairing of **yq** and **dasel** shipping today.
 
-- Dual-engine browser runtime: `yq` for jq-style expressions and `dasel` for selector-based queries.
-- Client-side execution only: no API routes, no database, no server-side evaluation.
-- URL hash state sync for shareable sessions.
-- Copy output, keyboard shortcuts, syntax highlighting, debounced auto-run, and truncated large-output previews.
-- Static export ready for GitHub Pages or Cloudflare Pages.
+## Two Engines. One Tool.
 
-## Engines
+The **yq** engine is the **kubernetes yaml query tool**-style workhorse people reach for when they already think in **jq** and want the same feel for YAML: jq-style paths, filters, and transforms against YAML-heavy sources. In Pluck it reads and writes YAML, JSON, XML, CSV, and TOML, and it can **emit Java `.properties`** as output—ideal when you are prototyping **helm values.yaml editor** flows or grepping a **kubernetes manifest query tool** slice out of a Deployment.
 
-### `yq`
+**dasel** adds selector-shaped ergonomics (`server.http_port`, `search(...)`, assignment-style updates) and fills the gaps **yq** does not cover in this WASM build: native **INI** input and output, **HCL** in and out, optional **read flags** (`csv-delimiter=…`, `xml-mode=structured`), **write flags** (for example `hcl-block-format=array`), user **variables** (`cfg=json:{"region":"ap-south-1"}`), **return modified root** after a write selector, and an **unstable** selector mode. Together they cover the messy real world: **kubernetes manifest** and **docker compose yaml query** sessions, **github actions yaml parser**-style inspection, **helm values** blocks, and **INI** application configs you would normally open only in dasel.
 
-Use `yq` mode when you want jq-style expressions, filtering, mapping, and the existing YAML-first workflow.
+| | yq engine | dasel engine |
+| --- | --- | --- |
+| **Syntax** | jq-style **yq** expressions (see [yq docs](https://mikefarah.gitbook.io/yq/)) | **dasel** selectors, `search()`, assignments, variables (see [dasel docs](https://daseldocs.tomwright.me/)) |
+| **Input formats** | YAML, JSON, XML, CSV, TOML | YAML, JSON, XML, CSV, TOML, **INI**, **HCL** |
+| **Output formats** | YAML, JSON, XML, CSV, TOML, **Properties** | YAML, JSON, XML, CSV, TOML, **INI**, **HCL** |
 
-### `dasel`
+## What You Can Do With Pluck
 
-Use `dasel` mode when you want:
-
-- native `ini` and `hcl` support
-- dasel selector syntax such as `server.http_port` or `search(name == "worker")`
-- write-style selectors such as `service.image = "ghcr.io/example/api:2.1.0"`
-- user-defined variables such as `cfg=json:{"region":"ap-south-1"}`
-- semicolon-separated statements and variable composition such as `$primary = services[0].host; [$primary]`
-
-Pluck loads both engines eagerly on page load. If one runtime fails to boot, the other engine remains usable and the failed engine is disabled in the UI until refresh.
+1. **Extract `.metadata.name` from a Kubernetes Deployment**—a practical **kubernetes yaml query tool** / **kubernetes manifest query tool** moment—**without installing yq**.
+2. **List Compose service keys** for a quick **docker compose yaml query** before you edit the file.
+3. **Inspect `.jobs.*.steps[].uses`** in CI YAML as a lightweight **github actions yaml parser** in the browser.
+4. **Convert a Helm `values.yaml` fragment to JSON** when you need JSON beside YAML for another system—a natural **helm values editor online** / **helm values.yaml editor** loop. Try it at **[authos.app/tools/pluck](https://authos.app/tools/pluck)**.
+5. **Query an INI config with dasel** when **jq yq browser** stacks skip **INI** entirely—native **INI** is a Pluck differentiator.
+6. **Use `search(...)` selectors** to find nodes anywhere in a document—**dasel selector online** workflows without leaving this page.
+7. **Convert TOML, XML, or CSV** and chain **toml json yaml converter** or **xml to json yaml converter online** experiments client-side.
+8. **Round-trip formats** where the engines agree; use **csv to yaml online**-style conversions when your table lands as CSV.
+9. **Tune yq YAML output** with unwrap scalar, suppress document separators, and pretty print when the output format is YAML.
+10. **Tune dasel** with read/write flags, variables, “return modified root,” and unstable selectors for advanced **config file transformer online** edits.
+11. **Share sessions**: input, selector/expression, formats, and toggles **sync into the URL hash** (with a size guard)—bookmark or paste a link.
+12. **Stay in flow**: debounced **auto-run**, **Cmd/Ctrl+Enter** to evaluate, **copy** output, **download** the full result when previews truncate, syntax-highlighted output, per-engine **syntax hints** with doc links, **clear**, **example** presets, engine **status badges**, and an 8s evaluation timeout that restarts a stuck worker—built like a small **yaml browser ide**, not a demo.
 
 ## Supported Formats
 
-| Format  | yq Input | yq Output | dasel Input | dasel Output |
-| ------- | -------- | --------- | ----------- | ------------ |
-| `yaml`  | yes      | yes       | yes         | yes          |
-| `json`  | yes      | yes       | yes         | yes          |
-| `xml`   | yes      | yes       | yes         | yes          |
-| `csv`   | yes      | yes       | yes         | yes          |
-| `toml`  | yes      | yes       | yes         | yes          |
-| `props` | no       | yes       | no          | no           |
-| `ini`   | no       | no        | yes         | yes          |
-| `hcl`   | no       | no        | yes         | yes          |
+Pluck is deliberately a **multi engine yaml tool**: you pick **yq** or **dasel**, and the UI only offers format pairs that WASM bridge exposes today.
 
-## Local Setup
+| Format | Read | Write | yq engine | dasel engine | Notes |
+| --- | --- | --- | --- | --- | --- |
+| YAML | Yes | Yes | In / out | In / out | **yq**: optional *No document separators* and *Pretty print* for YAML output. |
+| JSON | Yes | Yes | In / out | In / out | **yq**: *Unwrap scalar* affects JSON/YAML/Properties output. |
+| XML | Yes | Yes | In / out | In / out | Complex XML may not round-trip losslessly; **dasel** read flags can tune XML parsing (`xml-mode=structured`, etc.). |
+| CSV | Yes | Yes | In / out | In / out | **dasel** accepts parser flags such as `csv-delimiter=;` via **Read flags**. |
+| TOML | Yes | Yes | In / out | In / out | Handy for **toml to json online** and broader **toml json yaml converter** checks. |
+| INI | Yes | Yes | — | In / out | **INI** is **dasel**-native here; use it for **ini yaml converter** / **ini to yaml converter** paths **yq** cannot read in this build. |
+| Properties | No | Yes | Out only | — | Java **Properties** / `.properties` encoding is **yq** output-only in Pluck. |
+| HCL | Yes | Yes | — | In / out | HashiCorp-style **HCL** is **dasel**-only; pair with **write flags** when you need specific HCL shaping. |
 
-### Prerequisites
+## Examples
 
-- Node.js 20+
-- npm
-- Go 1.25+ on your `PATH`, in `.tools/go`, or in `%USERPROFILE%/.codex-toolchains/go`
-- Bash for `scripts/build-engine.sh`
+All samples run in **[Pluck](https://authos.app/tools/pluck)**—open the link, paste the input, set formats, and run.
 
-### Install
+### yq expressions
 
-```bash
-npm install
+#### 1. Kubernetes Deployment — `metadata.name` (**yaml path extractor**)
+
+**Input (YAML)**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-deployment
+  namespace: storefront
+spec:
+  replicas: 3
 ```
 
-### Build the browser engines
+**Expression**
 
-```bash
-bash scripts/build-engine.sh
+```text
+.metadata.name
 ```
 
-This generates:
+**Output (YAML)**
 
-- `public/engine-yq.wasm`
-- `public/engine-yq.wasm.gz`
-- `public/engine-dasel.wasm`
-- `public/engine-dasel.wasm.gz`
-- `public/wasm_exec.js`
-
-If `wasm-opt` is available on your `PATH`, the build script also runs an extra optimization pass on both binaries.
-
-### Start the app
-
-```bash
-npm run dev
+```yaml
+my-deployment
 ```
 
-Open the local URL printed by Next.js. Both browser runtimes begin loading immediately on page load.
+#### 2. Docker Compose — list service keys
 
-## Commands
+**Input (YAML)**
 
-```bash
-npm run build:engine  # build and optimize both browser engines
-npm run build         # static export through Next.js
-npm run build:all     # build both engines, then run the Next.js build
-npm run test:go       # Go unit tests for the yq and dasel bridges
-npm run test:unit     # TypeScript unit tests
-npm run test:e2e      # Playwright browser tests
-npm run phase1:audit  # browser-driven functional audit harness
-npm run lint          # ESLint
-npx tsc --noEmit      # TypeScript typecheck
-npm run format:check  # Prettier verification
+```yaml
+name: storefront
+services:
+  web:
+    image: nginx:1.27
+  worker:
+    image: node:20-alpine
 ```
 
-## Static Export
+**Expression**
 
-```bash
-npm run build:all
+```text
+.services | keys
 ```
 
-The exported site is written to `out/`.
+**Output (YAML)**
 
-Important output files:
-
-- `out/index.html`
-- `out/engine-yq.wasm`
-- `out/engine-yq.wasm.gz`
-- `out/engine-dasel.wasm`
-- `out/engine-dasel.wasm.gz`
-- `out/wasm_exec.js`
-
-## Deployment
-
-### Cloudflare Pages
-
-```bash
-npm run build:all
-npx wrangler pages deploy out
+```yaml
+- web
+- worker
 ```
 
-### GitHub Pages
+#### 3. GitHub Actions — step `uses` strings
 
-The Next config automatically applies a repository-name `basePath` during GitHub Actions builds by reading `GITHUB_REPOSITORY`, so the exported app can be published without editing the source for each repository.
+**Input (YAML)**
 
-## Docker
-
-Use the included `Dockerfile` for a reproducible local environment without installing Go directly on your host:
-
-```bash
-docker build -t pluck .
-docker run --rm -p 3000:3000 pluck
+```yaml
+name: ci
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm test
 ```
 
-## Built With
+**Expression**
 
-Third-party license details are available in [`THIRD_PARTY_LICENSES.txt`](./THIRD_PARTY_LICENSES.txt) and the in-app credits page.
+```text
+.jobs.build.steps[].uses
+```
+
+**Output (YAML)**
+
+```yaml
+- actions/checkout@v4
+- actions/setup-node@v4
+```
+
+#### 4. Helm-style values → JSON (**yaml transformer browser** / **yaml to json browser tool**)
+
+**Input (YAML)**
+
+```yaml
+replicaCount: 2
+image:
+  repository: ghcr.io/example/api
+  tag: "2.4.1"
+service:
+  type: ClusterIP
+  port: 80
+```
+
+**Expression**
+
+```text
+.
+```
+
+**Output (JSON)**
+
+```json
+{
+  "replicaCount": 2,
+  "image": {
+    "repository": "ghcr.io/example/api",
+    "tag": "2.4.1"
+  },
+  "service": {
+    "type": "ClusterIP",
+    "port": 80
+  }
+}
+```
+
+### dasel selectors
+
+#### 5. INI config — port lookup (**jqplay for yaml**-adjacent, but for **INI**)
+
+**Input (INI)**
+
+```ini
+app_mode = production
+
+[server]
+http_port = 9999
+graceful_timeout = 30
+```
+
+**Selector**
+
+```text
+server.http_port
+```
+
+**Output (YAML)**
+
+```yaml
+9999
+```
+
+#### 6. `search()` by field value
+
+**Input (YAML)**
+
+```yaml
+services:
+  - name: web
+    image: nginx:1.27
+  - name: worker
+    image: ghcr.io/example/worker:2.4.1
+```
+
+**Selector**
+
+```text
+search(name == "worker")
+```
+
+**Output (YAML)**
+
+```yaml
+name: worker
+image: ghcr.io/example/worker:2.4.1
+```
+
+#### 7. TOML → JSON (identity selector)
+
+**Input (TOML)**
+
+```toml
+[app]
+name = "pluck"
+port = 8080
+```
+
+**Selector**
+
+```text
+.
+```
+
+**Output (JSON)**
+
+```json
+{
+  "app": {
+    "name": "pluck",
+    "port": 8080
+  }
+}
+```
+
+#### 8. HCL → JSON (**dasel**-only path)
+
+**Input (HCL)**
+
+```hcl
+resource "aws_s3_bucket" "assets" {
+  bucket = "pluck-assets"
+  acl    = "private"
+}
+```
+
+**Selector**
+
+```text
+.
+```
+
+**Output (JSON)**
+
+```json
+{
+  "resource": {
+    "aws_s3_bucket": {
+      "assets": {
+        "bucket": "pluck-assets",
+        "acl": "private"
+      }
+    }
+  }
+}
+```
+
+## Private by Design — Runs Entirely in Your Browser
+
+Both **yq** and **dasel** ship as Go programs compiled to **WebAssembly**, loaded from static files, and executed inside dedicated **web workers** so the page stays responsive. That makes Pluck a **no server yaml query** stack: no API routes evaluate your documents, and nothing is posted to Pluck’s origin for parsing. Treat it as a **client side config parser** and **private yaml editor**—your configs stay on your machine, and after the first load the assets cache like any static app, so it behaves much like an **offline yaml tool** when you are air-gapped. There are no accounts, API keys, or rate limits—just **`jq online playground`-grade immediacy** for structured configs, realized as WASM.
+
+## Run Locally
+
+1. **Prerequisites:** Go **1.21+**, Node.js **18+**, and **bash** (for `scripts/build-engine.sh`; on Windows use Git Bash, WSL, or another bash environment).
+2. **Clone** this repository.
+3. **Build both WASM engines**: `bash scripts/build-engine.sh` — produces `public/engine-yq.wasm`, `public/engine-dasel.wasm`, optional `.gz` companions, and copies `public/wasm_exec.js` from your Go toolchain (runs `wasm-opt` when available).
+4. `npm install`
+5. `npm run dev`
+6. Open **http://localhost:3000** (default Next.js dev server).
+
+## Deploy Your Own Instance
+
+`npm run build:all` runs `build:engine` then `next build` with static export enabled. The deployable site lands in **`out/`**, including `out/engine-yq.wasm`, `out/engine-dasel.wasm`, `out/wasm_exec.js`, and gzipped WASM when present. Push that folder to **GitHub Pages**, **Cloudflare Pages**, **Vercel**, or any static host—no server runtime required.
+
+## Part of authos
+
+Pluck is one tool in **[authos](https://authos.app)**—a growing collection of free, browser-native developer tools I’m building under my own name, **Chaitanya Prabuddha**. Every **authos** tool runs entirely in your browser, avoids a login wall, and stays open source. If Pluck saved you ten minutes today, browse **[authos.app](https://authos.app)** for the rest—I’m also on X as [@chayprabs](https://x.com/chayprabs).
+
+## Contributing
+
+Issues and PRs are welcome—**Go (WASM)** and **TypeScript (UI)** contributions are both in scope. Most changes touch the bridges under `wasm/yq` and `wasm/dasel`, or the UI under `app/`, `components/`, and `lib/`. Please keep worker timeouts and bridge contracts in mind when you refactor. See **[LICENSE](./LICENSE)**.
+
+## License
+
+MIT. See **[LICENSE](./LICENSE)**. The bundled expression engines (**yq**, **dasel**) are also MIT licensed—verification and bundled text live in **[THIRD_PARTY_LICENSES.txt](./THIRD_PARTY_LICENSES.txt)**.

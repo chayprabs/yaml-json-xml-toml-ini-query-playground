@@ -1,5 +1,6 @@
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
+const { setupWasmExec } = require("./setup-wasm-exec.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const packages = ["./wasm/yq", "./wasm/dasel"];
@@ -23,6 +24,8 @@ function quoteExecPart(value) {
 const execPath = [process.execPath, path.join(__dirname, "go-js-wasm-exec.cjs")]
   .map(quoteExecPart)
   .join(" ");
+
+setupWasmExec();
 
 const hostResult = spawnSync(
   process.execPath,
