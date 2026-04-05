@@ -21,7 +21,7 @@ function quoteExecPart(value) {
   throw new Error(`Cannot quote exec argument: ${value}`);
 }
 
-function getExitCode(result, label) {
+function getCommandStatus(result, label) {
   if (result.error) {
     throw result.error;
   }
@@ -37,40 +37,52 @@ function getExitCode(result, label) {
   return 0;
 }
 
-const execPath = [process.execPath, path.join(__dirname, "go-js-wasm-exec.cjs")]
-  .map(quoteExecPart)
-  .join(" ");
-
-setupWasmExec();
-
-const hostResult = spawnSync(
-  process.execPath,
-  [path.join(__dirname, "run-go.cjs"), "test", ...packages],
-  {
+function runNodeCommand(label, args, options = {}) {
+  const result = spawnSync(process.execPath, args, {
     cwd: rootDir,
     stdio: "inherit",
-  },
-);
+    ...options,
+  });
 
-const hostStatus = getExitCode(hostResult, "Host Go tests");
-if (hostStatus !== 0) {
-  process.exitCode = hostStatus;
-} else {
+  return getCommandStatus(result, label);
+}
+
+function main() {
+  const execPath = [process.execPath, path.join(__dirname, "go-js-wasm-exec.cjs")]
+    .map(quoteExecPart)
+    .join(" ");
+
+  setupWasmExec();
+
+  const hostStatus = runNodeCommand("Host Go tests", [
+    path.join(__dirname, "run-go.cjs"),
+    "test",
+    ...packages,
+  ]);
+  if (hostStatus !== 0) {
+    return hostStatus;
+  }
+
   const wasmEnv = {
     ...process.env,
     GOARCH: "wasm",
     GOOS: "js",
   };
 
-  const wasmResult = spawnSync(
-    process.execPath,
+  return runNodeCommand(
+    "WASM Go tests",
     [path.join(__dirname, "run-go.cjs"), "test", "-exec", execPath, ...packages],
     {
-      cwd: rootDir,
       env: wasmEnv,
-      stdio: "inherit",
     },
   );
+}
 
-  process.exitCode = getExitCode(wasmResult, "WASM Go tests");
+try {
+  process.exitCode = main();
+} catch (error) {
+  const message =
+    error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`${message}\n`);
+  process.exitCode = 1;
 }
