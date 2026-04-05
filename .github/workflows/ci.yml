@@ -72,11 +72,22 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium firefox
 
-      - name: Run end-to-end tests
+      - name: Build WASM engines
+        run: bash scripts/build-engine.sh
+
+      - name: Build static export
         env:
           GITHUB_ACTIONS: "false"
+        run: npm run build
+
+      - name: Verify build output
         run: |
-          npm run build:engine
-          npm run build
-          ls out/engine-yq.wasm out/engine-dasel.wasm
-          npx playwright test --project=chromium --project=firefox --workers=2
+          test -f out/index.html || (echo "MISSING: out/index.html" && exit 1)
+          test -f out/wasm_exec.js || (echo "MISSING: out/wasm_exec.js" && exit 1)
+          test -f out/engine-yq.wasm || (echo "MISSING: out/engine-yq.wasm" && exit 1)
+          test -f out/engine-dasel.wasm || (echo "MISSING: out/engine-dasel.wasm" && exit 1)
+          ls -lh out/*.wasm out/wasm_exec.js
+          echo "All required files present"
+
+      - name: Run end-to-end tests
+        run: npx playwright test --project=chromium --workers=2

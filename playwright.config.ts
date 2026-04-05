@@ -1,8 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const host = process.env.PLAYGROUND_HOST ?? "127.0.0.1";
-const port = process.env.PLAYGROUND_PORT ?? "3000";
-const baseURL = process.env.PLAYGROUND_BASE_URL ?? `http://${host}:${port}`;
+const baseURL = process.env.PLAYGROUND_BASE_URL ?? "http://127.0.0.1:3000";
 
 export default defineConfig({
   testDir: "./tests",
@@ -22,10 +20,10 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `npx serve out -p ${port} -c ../serve.json`,
-    url: baseURL,
+    command: "node scripts/serve-static.cjs",
+    url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 300_000,
+    timeout: 30_000,
   },
   projects: [
     {
