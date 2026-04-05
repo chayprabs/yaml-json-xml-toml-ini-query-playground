@@ -40,7 +40,16 @@ rm -f \
   "$ROOT_DIR/public/engine.wasm.gz"
 
 pushd "$ROOT_DIR" >/dev/null
-curl -fsSL -o public/wasm_exec.js https://raw.githubusercontent.com/golang/go/refs/heads/master/lib/wasm/wasm_exec.js
+GO_VERSION="$("$NODE_BIN" "$RUN_GO_SCRIPT_FOR_NODE" env GOVERSION | tr -d '\r')"
+if [[ -z "$GO_VERSION" ]]; then
+  echo "Unable to determine the active Go toolchain version." >&2
+  exit 1
+fi
+
+WASM_EXEC_BASE_URL="https://raw.githubusercontent.com/golang/go/${GO_VERSION}"
+if ! curl -fsSL -o public/wasm_exec.js "${WASM_EXEC_BASE_URL}/lib/wasm/wasm_exec.js"; then
+  curl -fsSL -o public/wasm_exec.js "${WASM_EXEC_BASE_URL}/misc/wasm/wasm_exec.js"
+fi
 "$NODE_BIN" "$SETUP_WASM_EXEC_SCRIPT_FOR_NODE" >/dev/null
 if [[ "$NODE_BIN" == *.exe ]]; then
   ROOT_DIR_WIN="$ROOT_DIR_FOR_NODE"
