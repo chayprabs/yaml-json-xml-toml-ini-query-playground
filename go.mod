@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	enginecore v0.0.0
+	github.com/tomwright/dasel/v3 v3.4.1
 	go.yaml.in/yaml/v4 v4.0.0-rc.3
 )
 
@@ -26,7 +27,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
-	github.com/tomwright/dasel/v3 v3.4.1 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/zclconf/go-cty v1.18.0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
@@ -35,6 +35,7 @@ require (
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
+	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473 // indirect
 )
 

@@ -9,25 +9,26 @@ export default function Home() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-4">
             <p className="text-sm font-semibold uppercase tracking-[0.35em] text-ember">
-              Prabuddha Engine by Chaitanya Prabuddha
+              Pluck by Chaitanya Prabuddha
             </p>
             <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-              Structured data queries and conversion, fully in the browser.
+              Query configs with yq or dasel, fully in the browser.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-ink/75 sm:text-lg">
-              Prabuddha Engine runs expressions, format conversion, and
-              multi-document handling client-side with WebAssembly. No API
-              routes. No server-side evaluation. Just static files.
+              Pluck loads two Go WebAssembly engines client-side so you can use
+              yq expressions, dasel selectors, and format conversion without any
+              backend services. No API routes. No server-side evaluation. Just
+              static files.
             </p>
           </div>
           <div className="grid gap-3 rounded-2xl border border-ink/10 bg-paper/80 p-5 text-sm text-ink/75 sm:grid-cols-3 sm:gap-5">
             <div>
-              <p className="font-semibold text-ink">Inputs</p>
-              <p>YAML, JSON, XML, CSV, TOML</p>
+              <p className="font-semibold text-ink">Engines</p>
+              <p>yq and dasel, both loaded eagerly</p>
             </div>
             <div>
-              <p className="font-semibold text-ink">Outputs</p>
-              <p>YAML, JSON, XML, CSV, TOML, props</p>
+              <p className="font-semibold text-ink">Formats</p>
+              <p>YAML, JSON, XML, CSV, TOML, INI, HCL, props</p>
             </div>
             <div>
               <p className="font-semibold text-ink">Deployment</p>
@@ -53,10 +54,8 @@ export default function Home() {
             <p>Copy results, toggle unwrap scalar, no-doc, and pretty print.</p>
           </div>
           <div>
-            <p className="font-semibold text-paper">100% Browser</p>
-            <p>
-              All processing stays in WebAssembly with zero backend services.
-            </p>
+            <p className="font-semibold text-paper">Native Dual Engine</p>
+            <p>Both runtimes stay in WebAssembly with zero backend services.</p>
           </div>
         </div>
       </section>

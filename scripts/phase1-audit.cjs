@@ -52,20 +52,20 @@ async function evaluateInBrowser(
 ) {
   return page.evaluate(
     ({ innerInput, innerExpression, innerInputFormat, innerOutputFormat }) => {
-      try {
-        const value = window.engineEvaluate(
+      return window.__engineTestControls
+        ?.evaluateDirect({
+          engine: "yq",
           innerInput,
-          innerExpression,
-          innerInputFormat,
-          innerOutputFormat,
-        );
-        return { ok: true, value };
-      } catch (error) {
-        return {
+          expression: innerExpression,
+          input: innerInput,
+          inputFormat: innerInputFormat,
+          outputFormat: innerOutputFormat,
+        })
+        .then((value) => ({ ok: true, value }))
+        .catch((error) => ({
           ok: false,
           error: error instanceof Error ? error.message : String(error),
-        };
-      }
+        }));
     },
     {
       innerInput: input,
@@ -84,15 +84,21 @@ async function timedEvaluateInBrowser(
   outputFormat = "yaml",
 ) {
   return page.evaluate(
-    ({ innerInput, innerExpression, innerInputFormat, innerOutputFormat }) => {
+    async ({
+      innerInput,
+      innerExpression,
+      innerInputFormat,
+      innerOutputFormat,
+    }) => {
       const startedAt = performance.now();
       try {
-        const value = window.engineEvaluate(
-          innerInput,
-          innerExpression,
-          innerInputFormat,
-          innerOutputFormat,
-        );
+        const value = await window.__engineTestControls?.evaluateDirect({
+          engine: "yq",
+          expression: innerExpression,
+          input: innerInput,
+          inputFormat: innerInputFormat,
+          outputFormat: innerOutputFormat,
+        });
         return { ok: true, value, durationMs: performance.now() - startedAt };
       } catch (error) {
         return {
@@ -173,10 +179,18 @@ async function runUiEvaluation(page, state) {
 
 async function waitForReady(page) {
   await page.goto(BASE_URL);
-  await page.waitForFunction(() => typeof window.engineEvaluate === "function");
-  await page
-    .getByTestId("loading-indicator")
-    .waitFor({ state: "detached", timeout: 30000 });
+  await page.waitForFunction(
+    () => {
+      const button = document.querySelector('[data-testid="run-button"]');
+      return (
+        typeof window.__engineTestControls?.evaluateDirect === "function" &&
+        button instanceof HTMLButtonElement &&
+        !button.disabled
+      );
+    },
+    undefined,
+    { timeout: 30000 },
+  );
 }
 
 async function main() {

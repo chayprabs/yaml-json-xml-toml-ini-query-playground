@@ -31,6 +31,9 @@ if [[ "$NODE_BIN" == *.exe ]]; then
 fi
 
 mkdir -p "$ROOT_DIR/public"
+rm -f \
+  "$ROOT_DIR/public/engine.wasm" \
+  "$ROOT_DIR/public/engine.wasm.gz"
 
 pushd "$ROOT_DIR" >/dev/null
 if [[ "$NODE_BIN" == *.exe ]]; then

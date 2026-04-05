@@ -16,6 +16,28 @@ module.exports = withBundleAnalyzer((phase) => {
     env: {
       NEXT_PUBLIC_BASE_PATH: basePath ?? "",
     },
+    async headers() {
+      return [
+        {
+          source: "/engine-yq.wasm",
+          headers: [
+            {
+              key: "Content-Type",
+              value: "application/wasm",
+            },
+          ],
+        },
+        {
+          source: "/engine-dasel.wasm",
+          headers: [
+            {
+              key: "Content-Type",
+              value: "application/wasm",
+            },
+          ],
+        },
+      ];
+    },
     output: "export",
     reactStrictMode: true,
     trailingSlash: true,

@@ -43,6 +43,7 @@ type evaluationOptions struct {
 	ReadFlags  map[string]string
 	ReturnRoot bool
 	Unstable   bool
+	Variables  map[string]string
 	WriteFlags map[string]string
 	debugPanic bool
 }
@@ -74,6 +75,7 @@ func defaultEvaluationOptions() evaluationOptions {
 		ReadFlags:  map[string]string{},
 		ReturnRoot: false,
 		Unstable:   false,
+		Variables:  map[string]string{},
 		WriteFlags: map[string]string{},
 	}
 }
@@ -92,6 +94,39 @@ func newWriterOptions(options evaluationOptions) parsing.WriterOptions {
 		writerOptions.Ext[key] = value
 	}
 	return writerOptions
+}
+
+func newVariableOptions(options evaluationOptions) ([]execution.ExecuteOptionFn, error) {
+	var executeOptions []execution.ExecuteOptionFn
+
+	for key, rawValue := range options.Variables {
+		format := "dasel"
+		valueRaw := rawValue
+
+		firstSplit := strings.SplitN(valueRaw, ":", 2)
+		if len(firstSplit) == 2 {
+			format = firstSplit[0]
+			valueRaw = firstSplit[1]
+		}
+
+		if strings.HasPrefix(valueRaw, "file:") {
+			return nil, fmt.Errorf("file-backed dasel variables are not supported in the browser")
+		}
+
+		reader, err := parsing.Format(format).NewReader(parsing.DefaultReaderOptions())
+		if err != nil {
+			return nil, fmt.Errorf("failed to create variable reader for %s: %w", key, err)
+		}
+
+		value, err := reader.Read([]byte(valueRaw))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read variable %s: %w", key, err)
+		}
+
+		executeOptions = append(executeOptions, execution.WithVariable(key, value))
+	}
+
+	return executeOptions, nil
 }
 
 func safeEvaluateWithOptions(
@@ -147,6 +182,11 @@ func safeEvaluateWithOptions(
 	executeOptions := []execution.ExecuteOptionFn{
 		execution.WithVariable("root", inputData),
 	}
+	variableOptions, err := newVariableOptions(options)
+	if err != nil {
+		return "", err
+	}
+	executeOptions = append(executeOptions, variableOptions...)
 	if options.Unstable {
 		executeOptions = append(executeOptions, execution.WithUnstable())
 	}

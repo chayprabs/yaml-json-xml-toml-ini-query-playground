@@ -101,6 +101,7 @@ func optionsFromJS(value js.Value) evaluationOptions {
 	}
 
 	options.ReadFlags = parseStringMap(value.Get("readFlags"))
+	options.Variables = parseStringMap(value.Get("variables"))
 	options.WriteFlags = parseStringMap(value.Get("writeFlags"))
 
 	return options

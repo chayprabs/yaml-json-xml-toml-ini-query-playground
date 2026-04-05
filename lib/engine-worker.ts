@@ -1,7 +1,10 @@
 /// <reference lib="webworker" />
 
 import { getAssetPath } from "@/lib/asset-path";
-import { normalizeEngineError, toFriendlyEvaluationErrorMessage } from "@/lib/engine-errors";
+import {
+  normalizeEngineError,
+  toFriendlyEvaluationErrorMessage,
+} from "@/lib/engine-errors";
 import { ENGINE_RUNTIME_CONFIG } from "@/lib/engine-registry";
 import type {
   EngineEvaluateOptions,

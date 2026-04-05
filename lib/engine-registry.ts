@@ -1,4 +1,7 @@
-import { type EngineEvaluateOptions, type EngineType } from "@/lib/engine-types";
+import {
+  type EngineEvaluateOptions,
+  type EngineType,
+} from "@/lib/engine-types";
 
 export type EngineRuntimeConfig = {
   displayName: string;
@@ -35,6 +38,7 @@ export const DEFAULT_ENGINE_OPTIONS: Record<EngineType, EngineEvaluateOptions> =
       readFlags: {},
       returnRoot: false,
       unstable: false,
+      variables: {},
       writeFlags: {},
     },
   };
@@ -51,6 +55,10 @@ export function mergeEngineEvaluateOptions(
     readFlags: {
       ...(defaults.readFlags ?? {}),
       ...(options?.readFlags ?? {}),
+    },
+    variables: {
+      ...(defaults.variables ?? {}),
+      ...(options?.variables ?? {}),
     },
     writeFlags: {
       ...(defaults.writeFlags ?? {}),

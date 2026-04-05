@@ -39,8 +39,8 @@ class PlaygroundErrorBoundary extends Component<
             The playground hit an unexpected error.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-danger">
-            Refresh the page to recover the in-browser engine and try the
-            expression again.
+            Refresh the page to recover the in-browser engines and try the query
+            again.
           </p>
         </section>
       );

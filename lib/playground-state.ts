@@ -35,6 +35,7 @@ export type PlaygroundState = {
   returnRoot: boolean;
   unstable: boolean;
   unwrapScalar: boolean;
+  variablesText: string;
   writeFlagsText: string;
 };
 
@@ -49,10 +50,26 @@ export const ENGINE_PLACEHOLDERS: Record<EngineType, string> = {
   dasel: "server.http_port",
 };
 
-export const ENGINE_SYNTAX_HINTS: Record<EngineType, string> = {
-  yq: 'yq expression example: .services[] | select(.enabled == true) | .name',
-  dasel:
-    'dasel selector example: services.[name = "worker"].image or server.http_port',
+export type SyntaxHint = {
+  docsHref: string;
+  docsLabel: string;
+  example: string;
+  prefix: string;
+};
+
+export const ENGINE_SYNTAX_HINTS: Record<EngineType, SyntaxHint> = {
+  yq: {
+    docsHref: "https://mikefarah.gitbook.io/yq/",
+    docsLabel: "Open yq docs",
+    example: ".services[] | select(.enabled == true) | .name",
+    prefix: "yq expression example:",
+  },
+  dasel: {
+    docsHref: "https://daseldocs.tomwright.me/",
+    docsLabel: "Open dasel docs",
+    example: 'search(name == "worker") or server.http_port',
+    prefix: "dasel selector example:",
+  },
 };
 
 const hashEncoder = new TextEncoder();
@@ -153,9 +170,9 @@ graceful_timeout = 30
     id: "search-selector",
     label: "Search by sibling value",
     description:
-      "Use a dasel search selector to find one object by value without jq-style filters.",
+      "Use a dasel search selector to find matching objects anywhere in the document.",
     engine: "dasel",
-    expression: 'services.[name = "worker"].image',
+    expression: 'search(name == "worker")',
     inputFormat: "yaml",
     outputFormat: "yaml",
     input: `services:
@@ -200,6 +217,23 @@ graceful_timeout = 30
   acl    = "private"
 }`,
   },
+  {
+    id: "statement-vars",
+    label: "Variables and statements",
+    description:
+      "Compose a result with dasel variables and semicolon-separated statements in one selector.",
+    engine: "dasel",
+    expression: `$primary = services[0].host;
+$secondary = services[1].host;
+[$primary, $secondary]`,
+    inputFormat: "yaml",
+    outputFormat: "yaml",
+    input: `services:
+  - name: api
+    host: api.internal
+  - name: worker
+    host: worker.internal`,
+  },
 ];
 
 export function getExamplesForEngine(engine: EngineType): Example[] {
@@ -226,6 +260,7 @@ export function createDefaultState(): PlaygroundState {
     returnRoot: false,
     unstable: false,
     unwrapScalar: true,
+    variablesText: "",
     writeFlagsText: "",
   };
 }
@@ -327,6 +362,10 @@ export function decodeHashState(hash: string): Partial<PlaygroundState> | null {
       nextState.writeFlagsText = parsed.writeFlagsText;
     }
 
+    if (typeof parsed.variablesText === "string") {
+      nextState.variablesText = parsed.variablesText;
+    }
+
     return nextState;
   } catch {
     return null;
@@ -383,10 +422,7 @@ export function createRunSnapshot(state: PlaygroundState): RunSnapshot {
     expression: normalizedState.expression,
     input: normalizedState.input,
     inputFormat: normalizedState.inputFormat,
-    noDoc: supportsNoDoc(
-      normalizedState.engine,
-      normalizedState.outputFormat,
-    )
+    noDoc: supportsNoDoc(normalizedState.engine, normalizedState.outputFormat)
       ? normalizedState.noDoc
       : false,
     outputFormat: normalizedState.outputFormat,
@@ -408,6 +444,8 @@ export function createRunSnapshot(state: PlaygroundState): RunSnapshot {
     )
       ? normalizedState.unwrapScalar
       : false,
+    variablesText:
+      normalizedState.engine === "dasel" ? normalizedState.variablesText : "",
     writeFlagsText:
       normalizedState.engine === "dasel" ? normalizedState.writeFlagsText : "",
   };
@@ -458,6 +496,35 @@ export function parseFlagMap(flagText: string): Record<string, string> {
   return result;
 }
 
+export function parseVariableMap(variableText: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const segments = variableText
+    .split(/\r?\n/u)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  for (const segment of segments) {
+    const separatorIndex = segment.indexOf("=");
+    if (separatorIndex <= 0 || separatorIndex === segment.length - 1) {
+      throw new Error(
+        `Invalid dasel variable ${JSON.stringify(segment)}. Use one variable per line in the form name=value or name=format:value.`,
+      );
+    }
+
+    const key = segment.slice(0, separatorIndex).trim();
+    const value = segment.slice(separatorIndex + 1).trim();
+    if (!key || !value) {
+      throw new Error(
+        `Invalid dasel variable ${JSON.stringify(segment)}. Use one variable per line in the form name=value or name=format:value.`,
+      );
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
 export function createEngineEvaluateOptions(
   snapshot: RunSnapshot,
 ): EngineEvaluateOptions {
@@ -473,6 +540,7 @@ export function createEngineEvaluateOptions(
     readFlags: parseFlagMap(snapshot.readFlagsText),
     returnRoot: snapshot.returnRoot,
     unstable: snapshot.unstable,
+    variables: parseVariableMap(snapshot.variablesText),
     writeFlags: parseFlagMap(snapshot.writeFlagsText),
   };
 }

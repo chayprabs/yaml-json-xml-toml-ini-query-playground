@@ -15,13 +15,13 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Prabuddha Engine",
+  title: "Pluck",
   description:
-    "A browser-native structured data playground by Chaitanya Prabuddha.",
+    "A browser-native config query playground with yq and dasel engines.",
   openGraph: {
-    title: "Prabuddha Engine",
+    title: "Pluck",
     description:
-      "A browser-native structured data playground by Chaitanya Prabuddha.",
+      "A browser-native config query playground with yq and dasel engines.",
   },
 };
 

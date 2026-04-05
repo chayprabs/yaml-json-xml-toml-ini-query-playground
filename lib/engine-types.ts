@@ -42,6 +42,7 @@ export type EngineEvaluateOptions = {
   returnRoot?: boolean;
   unstable?: boolean;
   unwrapScalar?: boolean;
+  variables?: Record<string, string>;
   writeFlags?: Record<string, string>;
 };
 
@@ -62,11 +63,13 @@ export const ENGINE_INPUT_FORMATS: Record<EngineType, readonly InputFormat[]> =
     dasel: ["yaml", "json", "xml", "csv", "toml", "ini", "hcl"],
   };
 
-export const ENGINE_OUTPUT_FORMATS: Record<EngineType, readonly OutputFormat[]> =
-  {
-    yq: ["yaml", "json", "xml", "csv", "toml", "props"],
-    dasel: ["yaml", "json", "xml", "csv", "toml", "ini", "hcl"],
-  };
+export const ENGINE_OUTPUT_FORMATS: Record<
+  EngineType,
+  readonly OutputFormat[]
+> = {
+  yq: ["yaml", "json", "xml", "csv", "toml", "props"],
+  dasel: ["yaml", "json", "xml", "csv", "toml", "ini", "hcl"],
+};
 
 export const ENGINE_DISPLAY_NAMES: Record<EngineType, string> = {
   yq: "yq",
@@ -94,7 +97,9 @@ export const ENGINE_OVERALL_STATUS_LABELS: Record<
 };
 
 export function isInputFormat(value: unknown): value is InputFormat {
-  return typeof value === "string" && INPUT_FORMATS.includes(value as InputFormat);
+  return (
+    typeof value === "string" && INPUT_FORMATS.includes(value as InputFormat)
+  );
 }
 
 export function isOutputFormat(value: unknown): value is OutputFormat {
@@ -104,7 +109,9 @@ export function isOutputFormat(value: unknown): value is OutputFormat {
 }
 
 export function isEngineType(value: unknown): value is EngineType {
-  return typeof value === "string" && ENGINE_TYPES.includes(value as EngineType);
+  return (
+    typeof value === "string" && ENGINE_TYPES.includes(value as EngineType)
+  );
 }
 
 export function supportsInputFormat(

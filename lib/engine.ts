@@ -311,7 +311,9 @@ function handleWorkerMessage(
       return;
     }
     case "evaluate-success": {
-      const pendingEvaluation = state.pendingEvaluations.get(event.data.requestId);
+      const pendingEvaluation = state.pendingEvaluations.get(
+        event.data.requestId,
+      );
       if (!pendingEvaluation) {
         return;
       }
@@ -334,7 +336,9 @@ function handleWorkerMessage(
       return;
     }
     case "evaluate-error": {
-      const pendingEvaluation = state.pendingEvaluations.get(event.data.requestId);
+      const pendingEvaluation = state.pendingEvaluations.get(
+        event.data.requestId,
+      );
       if (!pendingEvaluation) {
         return;
       }
@@ -348,13 +352,19 @@ function handleWorkerMessage(
 }
 
 function createWorker(engine: EngineType): Worker {
-  const nextWorker = new Worker(new URL("./engine-worker.ts", import.meta.url), {
-    name: `pluck-engine-${engine}`,
-  });
+  const nextWorker = new Worker(
+    new URL("./engine-worker.ts", import.meta.url),
+    {
+      name: `pluck-engine-${engine}`,
+    },
+  );
 
-  nextWorker.addEventListener("message", (event: MessageEvent<WorkerResponse>) => {
-    handleWorkerMessage(engine, event);
-  });
+  nextWorker.addEventListener(
+    "message",
+    (event: MessageEvent<WorkerResponse>) => {
+      handleWorkerMessage(engine, event);
+    },
+  );
   nextWorker.addEventListener("error", () => {
     handleWorkerFailure(
       engine,
@@ -484,12 +494,9 @@ export async function initEngine(engine?: EngineType): Promise<void> {
   }
 
   markCombinedInitStart();
-  initAllPromise = Promise.all(ENGINE_TYPES.map((kind) => initEngineFor(kind)))
-    .then(() => undefined)
-    .catch((error: unknown) => {
-      clearCombinedInitPromise();
-      throw normalizeEngineError(error);
-    });
+  initAllPromise = Promise.allSettled(
+    ENGINE_TYPES.map((kind) => initEngineFor(kind)),
+  ).then(() => undefined);
 
   return initAllPromise;
 }
@@ -502,7 +509,7 @@ export async function evaluate(
   engine: EngineType,
   options?: Partial<EngineEvaluateOptions>,
 ): Promise<string> {
-  await initEngine();
+  await initEngine(engine);
 
   const state = engineStates[engine];
   const activeWorker = ensureWorker(engine);
