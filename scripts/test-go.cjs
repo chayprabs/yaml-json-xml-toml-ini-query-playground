@@ -1,44 +1,28 @@
 const { spawnSync } = require("node:child_process");
-const { existsSync } = require("node:fs");
 const path = require("node:path");
 
 const rootDir = path.resolve(__dirname, "..");
-const execWrapperWindows = path.join(__dirname, "go-js-wasm-exec.cmd");
 const packages = ["./wasm/yq", "./wasm/dasel"];
 
-function resolveGoWasmExec() {
-  const gorootResult = spawnSync(
-    process.execPath,
-    [path.join(__dirname, "run-go.cjs"), "env", "GOROOT"],
-    {
-      cwd: rootDir,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-
-  if (gorootResult.status !== 0) {
-    process.stderr.write(gorootResult.stderr || "Failed to resolve GOROOT.\n");
-    process.exit(gorootResult.status ?? 1);
+function quoteExecPart(value) {
+  if (!/[\s'"]/.test(value)) {
+    return value;
   }
 
-  const goroot = gorootResult.stdout.trim();
-  const candidates = [
-    path.join(goroot, "lib", "wasm", "go_js_wasm_exec"),
-    path.join(goroot, "misc", "wasm", "go_js_wasm_exec"),
-  ];
-
-  const match = candidates.find((candidate) => existsSync(candidate));
-  if (!match) {
-    process.stderr.write(`go_js_wasm_exec not found under GOROOT: ${goroot}\n`);
-    process.exit(1);
+  if (!value.includes("'")) {
+    return `'${value}'`;
   }
 
-  return match;
+  if (!value.includes('"')) {
+    return `"${value}"`;
+  }
+
+  throw new Error(`Cannot quote exec argument: ${value}`);
 }
 
-const execPath =
-  process.platform === "win32" ? execWrapperWindows : resolveGoWasmExec();
+const execPath = [process.execPath, path.join(__dirname, "go-js-wasm-exec.cjs")]
+  .map(quoteExecPart)
+  .join(" ");
 
 const hostResult = spawnSync(
   process.execPath,
