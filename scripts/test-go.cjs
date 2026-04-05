@@ -48,7 +48,10 @@ function runNodeCommand(label, args, options = {}) {
 }
 
 function main() {
-  const execPath = [process.execPath, path.join(__dirname, "go-js-wasm-exec.cjs")]
+  const execPath = [
+    process.execPath,
+    path.join(__dirname, "go-js-wasm-exec.cjs"),
+  ]
     .map(quoteExecPart)
     .join(" ");
 
@@ -72,7 +75,13 @@ function main() {
 
   return runNodeCommand(
     "WASM Go tests",
-    [path.join(__dirname, "run-go.cjs"), "test", "-exec", execPath, ...packages],
+    [
+      path.join(__dirname, "run-go.cjs"),
+      "test",
+      "-exec",
+      execPath,
+      ...packages,
+    ],
     {
       env: wasmEnv,
     },
@@ -83,7 +92,7 @@ try {
   process.exitCode = main();
 } catch (error) {
   const message =
-    error instanceof Error ? error.stack ?? error.message : String(error);
+    error instanceof Error ? (error.stack ?? error.message) : String(error);
   process.stderr.write(`${message}\n`);
   process.exitCode = 1;
 }

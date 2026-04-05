@@ -13,11 +13,11 @@ The **yq** engine is the **kubernetes yaml query tool**-style workhorse people r
 
 **dasel** adds selector-shaped ergonomics (`server.http_port`, `search(...)`, assignment-style updates) and fills the gaps **yq** does not cover in this WASM build: native **INI** input and output, **HCL** in and out, optional **read flags** (`csv-delimiter=…`, `xml-mode=structured`), **write flags** (for example `hcl-block-format=array`), user **variables** (`cfg=json:{"region":"ap-south-1"}`), **return modified root** after a write selector, and an **unstable** selector mode. Together they cover the messy real world: **kubernetes manifest** and **docker compose yaml query** sessions, **github actions yaml parser**-style inspection, **helm values** blocks, and **INI** application configs you would normally open only in dasel.
 
-| | yq engine | dasel engine |
-| --- | --- | --- |
-| **Syntax** | jq-style **yq** expressions (see [yq docs](https://mikefarah.gitbook.io/yq/)) | **dasel** selectors, `search()`, assignments, variables (see [dasel docs](https://daseldocs.tomwright.me/)) |
-| **Input formats** | YAML, JSON, XML, CSV, TOML | YAML, JSON, XML, CSV, TOML, **INI**, **HCL** |
-| **Output formats** | YAML, JSON, XML, CSV, TOML, **Properties** | YAML, JSON, XML, CSV, TOML, **INI**, **HCL** |
+|                    | yq engine                                                                     | dasel engine                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Syntax**         | jq-style **yq** expressions (see [yq docs](https://mikefarah.gitbook.io/yq/)) | **dasel** selectors, `search()`, assignments, variables (see [dasel docs](https://daseldocs.tomwright.me/)) |
+| **Input formats**  | YAML, JSON, XML, CSV, TOML                                                    | YAML, JSON, XML, CSV, TOML, **INI**, **HCL**                                                                |
+| **Output formats** | YAML, JSON, XML, CSV, TOML, **Properties**                                    | YAML, JSON, XML, CSV, TOML, **INI**, **HCL**                                                                |
 
 ## What You Can Do With Pluck
 
@@ -38,16 +38,16 @@ The **yq** engine is the **kubernetes yaml query tool**-style workhorse people r
 
 Pluck is deliberately a **multi engine yaml tool**: you pick **yq** or **dasel**, and the UI only offers format pairs that WASM bridge exposes today.
 
-| Format | Read | Write | yq engine | dasel engine | Notes |
-| --- | --- | --- | --- | --- | --- |
-| YAML | Yes | Yes | In / out | In / out | **yq**: optional *No document separators* and *Pretty print* for YAML output. |
-| JSON | Yes | Yes | In / out | In / out | **yq**: *Unwrap scalar* affects JSON/YAML/Properties output. |
-| XML | Yes | Yes | In / out | In / out | Complex XML may not round-trip losslessly; **dasel** read flags can tune XML parsing (`xml-mode=structured`, etc.). |
-| CSV | Yes | Yes | In / out | In / out | **dasel** accepts parser flags such as `csv-delimiter=;` via **Read flags**. |
-| TOML | Yes | Yes | In / out | In / out | Handy for **toml to json online** and broader **toml json yaml converter** checks. |
-| INI | Yes | Yes | — | In / out | **INI** is **dasel**-native here; use it for **ini yaml converter** / **ini to yaml converter** paths **yq** cannot read in this build. |
-| Properties | No | Yes | Out only | — | Java **Properties** / `.properties` encoding is **yq** output-only in Pluck. |
-| HCL | Yes | Yes | — | In / out | HashiCorp-style **HCL** is **dasel**-only; pair with **write flags** when you need specific HCL shaping. |
+| Format     | Read | Write | yq engine | dasel engine | Notes                                                                                                                                   |
+| ---------- | ---- | ----- | --------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| YAML       | Yes  | Yes   | In / out  | In / out     | **yq**: optional _No document separators_ and _Pretty print_ for YAML output.                                                           |
+| JSON       | Yes  | Yes   | In / out  | In / out     | **yq**: _Unwrap scalar_ affects JSON/YAML/Properties output.                                                                            |
+| XML        | Yes  | Yes   | In / out  | In / out     | Complex XML may not round-trip losslessly; **dasel** read flags can tune XML parsing (`xml-mode=structured`, etc.).                     |
+| CSV        | Yes  | Yes   | In / out  | In / out     | **dasel** accepts parser flags such as `csv-delimiter=;` via **Read flags**.                                                            |
+| TOML       | Yes  | Yes   | In / out  | In / out     | Handy for **toml to json online** and broader **toml json yaml converter** checks.                                                      |
+| INI        | Yes  | Yes   | —         | In / out     | **INI** is **dasel**-native here; use it for **ini yaml converter** / **ini to yaml converter** paths **yq** cannot read in this build. |
+| Properties | No   | Yes   | Out only  | —            | Java **Properties** / `.properties` encoding is **yq** output-only in Pluck.                                                            |
+| HCL        | Yes  | Yes   | —         | In / out     | HashiCorp-style **HCL** is **dasel**-only; pair with **write flags** when you need specific HCL shaping.                                |
 
 ## Examples
 
