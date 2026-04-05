@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.PLAYGROUND_BASE_URL ?? "http://127.0.0.1:3000";
+const webServerCommand =
+  process.platform === "win32"
+    ? "node scripts/serve-static.cjs"
+    : "exec node scripts/serve-static.cjs";
 
 export default defineConfig({
   testDir: "./tests",
@@ -20,7 +24,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "node scripts/serve-static.cjs",
+    command: webServerCommand,
     gracefulShutdown: {
       signal: "SIGTERM",
       timeout: 5_000,
