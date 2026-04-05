@@ -91,13 +91,16 @@ jobs:
 
       - name: Run end-to-end tests
         run: |
-          node scripts/serve-static.cjs &
+          SERVER_LOG=/tmp/playwright-static-server.log
+          node scripts/serve-static.cjs >"$SERVER_LOG" 2>&1 &
           SERVER_PID=$!
-          cleanup() {
-            kill "$SERVER_PID" 2>/dev/null || true
-            sleep 1
-            kill -9 "$SERVER_PID" 2>/dev/null || true
-            wait "$SERVER_PID" 2>/dev/null || true
-          }
-          trap cleanup EXIT
           PLAYWRIGHT_EXTERNAL_SERVER=1 npx playwright test --project=chromium --workers=1
+          TEST_EXIT=$?
+          kill "$SERVER_PID" 2>/dev/null || true
+          sleep 1
+          kill -9 "$SERVER_PID" 2>/dev/null || true
+          wait "$SERVER_PID" 2>/dev/null || true
+          if [ "$TEST_EXIT" -ne 0 ]; then
+            cat "$SERVER_LOG"
+          fi
+          exit "$TEST_EXIT"
