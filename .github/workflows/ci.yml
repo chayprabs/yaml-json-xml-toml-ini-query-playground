@@ -73,6 +73,8 @@ jobs:
         run: npx playwright install --with-deps chromium firefox
 
       - name: Run end-to-end tests
+        env:
+          GITHUB_ACTIONS: "false"
         run: npm run build:engine && npx playwright test --project=chromium --project=firefox --workers=2
 
       - name: Build static export
