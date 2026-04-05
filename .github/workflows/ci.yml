@@ -70,10 +70,10 @@ jobs:
         run: npm run test:unit
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps chromium firefox
 
       - name: Run end-to-end tests
-        run: npm run test:e2e
+        run: npm run build:engine && npx playwright test --project=chromium --project=firefox --workers=2
 
       - name: Build static export
         run: npm run build

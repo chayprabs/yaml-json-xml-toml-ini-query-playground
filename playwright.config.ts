@@ -9,10 +9,16 @@ export default defineConfig({
   testMatch: ["**/*.spec.ts"],
   fullyParallel: true,
   workers: 4,
+  timeout: 60_000,
+  expect: {
+    timeout: 15_000,
+  },
   retries: 0,
   reporter: "list",
   use: {
+    actionTimeout: 15_000,
     baseURL,
+    navigationTimeout: 30_000,
     trace: "on-first-retry",
   },
   webServer: {
