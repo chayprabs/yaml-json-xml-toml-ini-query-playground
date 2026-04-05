@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	core "enginecore"
+	core "github.com/mikefarah/yq/v4/pkg/yqlib"
 )
 
 type inputFormat string
