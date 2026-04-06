@@ -21,6 +21,7 @@ type GoRuntime = {
 
 type WorkerInitMessage = {
   engine: EngineType;
+  preferRawWasm?: boolean;
   testDisableWebAssembly?: boolean;
   type: "init";
 };
@@ -100,10 +101,7 @@ let disableWebAssemblyForTest = false;
 let initPromise: Promise<void> | null = null;
 let nextEvaluationDelayMs = 0;
 let panicNextEvaluation = false;
-const isAutomatedBrowser =
-  "webdriver" in globalScope.navigator &&
-  (globalScope.navigator as WorkerNavigator & { webdriver?: boolean })
-    .webdriver === true;
+let preferRawWasm = false;
 
 function postMessageToMainThread(message: WorkerResponse) {
   globalScope.postMessage(message);
@@ -180,7 +178,7 @@ async function instantiateModule(
     if (
       typeof DecompressionStream === "undefined" ||
       typeof Response === "undefined" ||
-      isAutomatedBrowser
+      preferRawWasm
     ) {
       return null;
     }
@@ -369,6 +367,7 @@ globalScope.addEventListener(
     switch (event.data.type) {
       case "init":
         activeEngine = event.data.engine;
+        preferRawWasm = event.data.preferRawWasm === true;
         disableWebAssemblyForTest = event.data.testDisableWebAssembly === true;
         void initEngine();
         break;

@@ -27,6 +27,7 @@ type InitListener = (snapshot: EngineInitSnapshot) => void;
 
 type WorkerInitMessage = {
   engine: EngineType;
+  preferRawWasm?: boolean;
   testDisableWebAssembly?: boolean;
   type: "init";
 };
@@ -466,6 +467,8 @@ function startWorkerInit(engine: EngineType) {
 
   ensureWorker(engine).postMessage({
     engine,
+    preferRawWasm:
+      typeof navigator !== "undefined" && navigator.webdriver === true,
     testDisableWebAssembly:
       typeof window !== "undefined" &&
       window.__engineTestBootstrapOptions?.disableWebAssembly === true,
