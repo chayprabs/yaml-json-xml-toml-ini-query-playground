@@ -304,15 +304,15 @@ test("parseFlagMap handles comma-separated flags", () => {
 });
 
 test("parseFlagMap throws on missing value", () => {
-  assert.throws(() => parseFlagMap("novalue"), /Invalid dasel flag/);
+  assert.throws(() => parseFlagMap("novalue"), /Invalid flag/);
 });
 
 test("parseFlagMap throws on trailing equals", () => {
-  assert.throws(() => parseFlagMap("key="), /Invalid dasel flag/);
+  assert.throws(() => parseFlagMap("key="), /Invalid flag/);
 });
 
 test("parseFlagMap throws on leading equals", () => {
-  assert.throws(() => parseFlagMap("=value"), /Invalid dasel flag/);
+  assert.throws(() => parseFlagMap("=value"), /Invalid flag/);
 });
 
 // ── Edge cases: parseVariableMap ───────────────────────────────────────
@@ -332,7 +332,7 @@ test("parseVariableMap preserves format:value syntax", () => {
 });
 
 test("parseVariableMap throws on missing value", () => {
-  assert.throws(() => parseVariableMap("novalue"), /Invalid dasel variable/);
+  assert.throws(() => parseVariableMap("novalue"), /Invalid variable/);
 });
 
 // ── Edge cases: serializeRunSnapshot determinism ───────────────────────

@@ -25,6 +25,7 @@ import {
   type OutputFormat,
 } from "@/lib/engine";
 import {
+  ENGINE_DISPLAY_NAMES,
   ENGINE_INPUT_FORMATS,
   ENGINE_OUTPUT_FORMATS,
   ENGINE_OVERALL_STATUS_LABELS,
@@ -217,7 +218,7 @@ function downloadOutput(fullOutput: string, outputFormat: OutputFormat) {
 function engineDescription(engine: EngineType): string {
   return engine === "yq"
     ? "jq-style expressions for reads, filtering, and conversion across YAML-first config workflows."
-    : "Dasel selectors plus native INI and HCL support, with search and write-style operations exposed safely in the browser.";
+    : "Selector-based queries plus native INI and HCL support, with search and write-style operations exposed safely in the browser.";
 }
 
 export function Playground() {
@@ -348,13 +349,13 @@ export function Playground() {
           setError(
             selectedEngineState.error ??
               getEngineInitError(snapshot.engine) ??
-              `The ${snapshot.engine} engine is unavailable right now.`,
+              `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
           );
           return;
         }
 
         setError(
-          `The ${snapshot.engine} engine is still loading. Please wait a moment and try again.`,
+          `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
         );
         return;
       }
@@ -760,7 +761,9 @@ export function Playground() {
                   title={engineSnapshot.engines[engine].error ?? undefined}
                   onClick={() => switchEngine(engine)}
                 >
-                  <p className="text-sm font-semibold">{engine}</p>
+                  <p className="text-sm font-semibold">
+                    {ENGINE_DISPLAY_NAMES[engine]}
+                  </p>
                   <p
                     className={`mt-1 text-xs leading-5 ${
                       selected ? "text-white/75" : "text-ink/65"
@@ -768,7 +771,7 @@ export function Playground() {
                   >
                     {engine === "yq"
                       ? "jq-style expressions"
-                      : "Dasel selectors"}
+                      : "Dot-path selectors"}
                   </p>
                 </button>
               );
@@ -789,7 +792,7 @@ export function Playground() {
                 data-testid={`engine-error-${engine}`}
                 className="mt-3 rounded-[1rem] border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-danger"
               >
-                {engine} is unavailable right now.{" "}
+                {ENGINE_DISPLAY_NAMES[engine]} engine is unavailable right now.{" "}
                 {engineSnapshot.engines[engine].error ??
                   "Refresh the page to try loading it again."}
               </p>
@@ -803,7 +806,7 @@ export function Playground() {
           <p className="mt-3 text-sm leading-6 text-ink/75">
             {settings.engine === "yq"
               ? "Use realistic YAML and JSON-heavy samples for read, filter, and conversion workflows."
-              : "Use native dasel samples for INI, HCL, search selectors, and assignment-style mutations."}
+              : "Use native samples for INI, HCL, search selectors, and assignment-style mutations."}
           </p>
         </div>
 
@@ -968,7 +971,9 @@ export function Playground() {
                 data-testid={`engine-status-${engine}`}
                 className="rounded-full border border-ink/10 bg-white px-3 py-1 text-ink/70"
               >
-                <span className="font-semibold text-ink">{engine}:</span>{" "}
+                <span className="font-semibold text-ink">
+                  {ENGINE_DISPLAY_NAMES[engine]}:
+                </span>{" "}
                 {ENGINE_STATUS_LABELS[engineSnapshot.engines[engine].status]}
               </div>
             ))}
@@ -1050,7 +1055,7 @@ export function Playground() {
                 />
                 <ToggleOption
                   checked={settings.unstable}
-                  description="Enable selectors guarded behind dasel's unstable execution option."
+                  description="Enable selectors guarded behind the unstable execution option."
                   label="Enable unstable selectors"
                   onChange={(unstable) => updateSettings({ unstable })}
                   testId="unstable-toggle"

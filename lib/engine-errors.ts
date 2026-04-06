@@ -51,11 +51,11 @@ export function toFriendlyEvaluationErrorMessage(
   }
 
   if (normalized.includes("expression is required")) {
-    return "Expression is required. Enter a yq expression before running.";
+    return "Expression is required. Enter an expression before running.";
   }
 
   if (normalized.includes("selector is required")) {
-    return "Selector is required. Enter a dasel selector before running.";
+    return "Selector is required. Enter a selector before running.";
   }
 
   if (normalized.includes("input is required")) {
@@ -63,11 +63,11 @@ export function toFriendlyEvaluationErrorMessage(
   }
 
   if (normalized.includes("unsupported input format")) {
-    return `Unsupported input format for ${engine}. Choose one of ${supportedInputFormats(engine)}. Details: ${firstLine}`;
+    return `Unsupported input format. Choose one of ${supportedInputFormats(engine)}. Details: ${firstLine}`;
   }
 
   if (normalized.includes("unsupported output format")) {
-    return `Unsupported output format for ${engine}. Choose one of ${supportedOutputFormats(engine)}. Details: ${firstLine}`;
+    return `Unsupported output format. Choose one of ${supportedOutputFormats(engine)}. Details: ${firstLine}`;
   }
 
   if (normalized.includes("internal error occurred")) {

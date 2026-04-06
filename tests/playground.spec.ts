@@ -16,7 +16,7 @@ async function waitForPlaygroundReady(
   );
 
   await expect(page.getByTestId("loading-indicator")).toContainText(
-    "Both browser engines are ready",
+    "Both engines are ready",
     { timeout },
   );
   await expect(page.getByTestId("engine-status-yq")).toContainText("Ready", {
@@ -105,6 +105,10 @@ async function panicNextEvaluation(page: Page, engine: "dasel" | "yq" = "yq") {
 test("page loads with both engines initialized", async ({ page }) => {
   await page.goto("/");
   await waitForPlaygroundReady(page);
+
+  await expect(page.getByTestId("engine-status-yq")).toContainText("Ready");
+  await expect(page.getByTestId("engine-status-dasel")).toContainText("Ready");
+  await expect(page.getByTestId("run-button")).toBeEnabled();
   await expect(page.getByTestId("engine-toggle-yq")).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -119,7 +123,9 @@ test("toggle to dasel mode updates formats, presets, and syntax hint", async ({
 
   await setEngine(page, "dasel");
 
-  await expect(page.getByTestId("syntax-hint")).toContainText("dasel selector");
+  await expect(page.getByTestId("syntax-hint")).toContainText(
+    "Selector example",
+  );
   await expect(page.getByTestId("syntax-hint").locator("a")).toHaveAttribute(
     "href",
     "https://daseldocs.tomwright.me/",

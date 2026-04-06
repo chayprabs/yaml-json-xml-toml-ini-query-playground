@@ -12,19 +12,19 @@ export default function Home() {
               Pluck by Chaitanya Prabuddha
             </p>
             <h1 className="text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-              Query configs with yq or dasel, fully in the browser.
+              Query structured config, fully in the browser.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-ink/75 sm:text-lg">
-              Pluck loads two Go WebAssembly engines client-side so you can use
-              yq expressions, dasel selectors, and format conversion without any
-              backend services. No API routes. No server-side evaluation. Just
-              static files.
+              Pluck loads two Go WebAssembly engines client-side so you can run
+              expressions, selectors, and format conversions without any backend
+              services. No API routes. No server-side evaluation. Just static
+              files.
             </p>
           </div>
           <div className="grid gap-3 rounded-2xl border border-ink/10 bg-paper/80 p-5 text-sm text-ink/75 sm:grid-cols-3 sm:gap-5">
             <div>
               <p className="font-semibold text-ink">Engines</p>
-              <p>yq and dasel, both loaded eagerly</p>
+              <p>Expression and selector modes, both loaded eagerly</p>
             </div>
             <div>
               <p className="font-semibold text-ink">Formats</p>

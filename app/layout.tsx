@@ -17,11 +17,11 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Pluck",
   description:
-    "A browser-native config query playground with yq and dasel engines.",
+    "A browser-native config query playground. Paste YAML, JSON, XML, CSV, TOML, or INI and run expressions or selectors, fully client-side with WebAssembly.",
   openGraph: {
     title: "Pluck",
     description:
-      "A browser-native config query playground with yq and dasel engines.",
+      "A browser-native config query playground. Paste YAML, JSON, XML, CSV, TOML, or INI and run expressions or selectors, fully client-side with WebAssembly.",
   },
 };
 

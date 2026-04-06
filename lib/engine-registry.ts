@@ -14,13 +14,13 @@ export type EngineRuntimeConfig = {
 
 export const ENGINE_RUNTIME_CONFIG: Record<EngineType, EngineRuntimeConfig> = {
   yq: {
-    displayName: "yq",
+    displayName: "Expression",
     evaluateWithOptionsGlobal: "yqEvaluateWithOptions",
     wasmFileName: "engine-yq.wasm",
     wasmGzipFileName: "engine-yq.wasm.gz",
   },
   dasel: {
-    displayName: "dasel",
+    displayName: "Selector",
     evaluateWithOptionsGlobal: "daselEvaluateWithOptions",
     wasmFileName: "engine-dasel.wasm",
     wasmGzipFileName: "engine-dasel.wasm.gz",

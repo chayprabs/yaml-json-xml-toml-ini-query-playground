@@ -60,15 +60,15 @@ export type SyntaxHint = {
 export const ENGINE_SYNTAX_HINTS: Record<EngineType, SyntaxHint> = {
   yq: {
     docsHref: "https://mikefarah.gitbook.io/yq/",
-    docsLabel: "Open yq docs",
+    docsLabel: "Open syntax docs",
     example: ".services[] | select(.enabled == true) | .name",
-    prefix: "yq expression example:",
+    prefix: "Expression example:",
   },
   dasel: {
     docsHref: "https://daseldocs.tomwright.me/",
-    docsLabel: "Open dasel docs",
+    docsLabel: "Open syntax docs",
     example: 'search(name == "worker") or server.http_port',
-    prefix: "dasel selector example:",
+    prefix: "Selector example:",
   },
 };
 
@@ -154,7 +154,7 @@ jobs:
     id: "ini-read",
     label: "INI configuration lookup",
     description:
-      "Read a sectioned INI config natively, which the yq engine cannot parse.",
+      "Read a sectioned INI config natively. INI is only available in selector mode.",
     engine: "dasel",
     expression: "server.http_port",
     inputFormat: "ini",
@@ -170,7 +170,7 @@ graceful_timeout = 30
     id: "search-selector",
     label: "Search by sibling value",
     description:
-      "Use a dasel search selector to find matching objects anywhere in the document.",
+      "Use a search selector to find matching objects anywhere in the document.",
     engine: "dasel",
     expression: 'search(name == "worker")',
     inputFormat: "yaml",
@@ -190,7 +190,7 @@ graceful_timeout = 30
     id: "mutate-root",
     label: "Modify and return root",
     description:
-      "Apply a dasel assignment and return the modified document instead of only the assigned node.",
+      "Apply an assignment selector and return the modified document instead of only the assigned node.",
     engine: "dasel",
     expression: 'service.image = "ghcr.io/example/api:2.1.0"',
     inputFormat: "yaml",
@@ -207,7 +207,7 @@ graceful_timeout = 30
     id: "hcl-convert",
     label: "HCL to JSON conversion",
     description:
-      "Convert Terraform-style HCL to JSON, a format pair that only the dasel engine offers here.",
+      "Convert Terraform-style HCL to JSON, a format pair only available in selector mode.",
     engine: "dasel",
     expression: ".",
     inputFormat: "hcl",
@@ -221,7 +221,7 @@ graceful_timeout = 30
     id: "statement-vars",
     label: "Variables and statements",
     description:
-      "Compose a result with dasel variables and semicolon-separated statements in one selector.",
+      "Compose a result with variables and semicolon-separated statements in one selector.",
     engine: "dasel",
     expression: `$primary = services[0].host;
 $secondary = services[1].host;
@@ -478,7 +478,7 @@ export function parseFlagMap(flagText: string): Record<string, string> {
     const separatorIndex = segment.indexOf("=");
     if (separatorIndex <= 0 || separatorIndex === segment.length - 1) {
       throw new Error(
-        `Invalid dasel flag ${JSON.stringify(segment)}. Use key=value pairs separated by commas or new lines.`,
+        `Invalid flag ${JSON.stringify(segment)}. Use key=value pairs separated by commas or new lines.`,
       );
     }
 
@@ -486,7 +486,7 @@ export function parseFlagMap(flagText: string): Record<string, string> {
     const value = segment.slice(separatorIndex + 1).trim();
     if (!key || !value) {
       throw new Error(
-        `Invalid dasel flag ${JSON.stringify(segment)}. Use key=value pairs separated by commas or new lines.`,
+        `Invalid flag ${JSON.stringify(segment)}. Use key=value pairs separated by commas or new lines.`,
       );
     }
 
@@ -507,7 +507,7 @@ export function parseVariableMap(variableText: string): Record<string, string> {
     const separatorIndex = segment.indexOf("=");
     if (separatorIndex <= 0 || separatorIndex === segment.length - 1) {
       throw new Error(
-        `Invalid dasel variable ${JSON.stringify(segment)}. Use one variable per line in the form name=value or name=format:value.`,
+        `Invalid variable ${JSON.stringify(segment)}. Use one variable per line in the form name=value or name=format:value.`,
       );
     }
 
@@ -515,7 +515,7 @@ export function parseVariableMap(variableText: string): Record<string, string> {
     const value = segment.slice(separatorIndex + 1).trim();
     if (!key || !value) {
       throw new Error(
-        `Invalid dasel variable ${JSON.stringify(segment)}. Use one variable per line in the form name=value or name=format:value.`,
+        `Invalid variable ${JSON.stringify(segment)}. Use one variable per line in the form name=value or name=format:value.`,
       );
     }
 

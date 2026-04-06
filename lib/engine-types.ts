@@ -72,8 +72,8 @@ export const ENGINE_OUTPUT_FORMATS: Record<
 };
 
 export const ENGINE_DISPLAY_NAMES: Record<EngineType, string> = {
-  yq: "yq",
-  dasel: "dasel",
+  yq: "Expression",
+  dasel: "Selector",
 };
 
 export const ENGINE_STATUS_LABELS: Record<EngineInitStatus, string> = {
@@ -92,8 +92,8 @@ export const ENGINE_OVERALL_STATUS_LABELS: Record<
 > = {
   idle: "Waiting to initialize engines.",
   loading: "Loading engines...",
-  ready: "Both browser engines are ready.",
-  error: "One or more browser engines failed to initialize.",
+  ready: "Both engines are ready.",
+  error: "One or more engines failed to initialize.",
 };
 
 export function isInputFormat(value: unknown): value is InputFormat {

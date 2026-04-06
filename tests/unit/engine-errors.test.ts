@@ -115,24 +115,24 @@ test("maps input-required error", () => {
 
 // ── Edge cases: unsupported format messages ────────────────────────────
 
-test("maps unsupported input format with engine context", () => {
+test("maps unsupported input format with supported format list", () => {
   const msg = toFriendlyEvaluationErrorMessage(
     'unsupported input format "hcl"',
     "yaml",
     "yq",
   );
   assert.match(msg, /unsupported input format/i);
-  assert.match(msg, /yq/);
+  assert.match(msg, /yaml/);
 });
 
-test("maps unsupported output format with engine context", () => {
+test("maps unsupported output format with supported format list", () => {
   const msg = toFriendlyEvaluationErrorMessage(
     'unsupported output format "ini"',
     "yaml",
     "yq",
   );
   assert.match(msg, /unsupported output format/i);
-  assert.match(msg, /yq/);
+  assert.match(msg, /yaml/);
 });
 
 // ── Edge cases: Error: prefix stripping ────────────────────────────────
