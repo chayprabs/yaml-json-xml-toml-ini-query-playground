@@ -90,4 +90,4 @@ jobs:
           echo "All required files present"
 
       - name: Run end-to-end tests
-        run: npx playwright test --project=chromium --workers=1
+        run: npx playwright test --project=chromium --workers=1 --reporter=line,github
