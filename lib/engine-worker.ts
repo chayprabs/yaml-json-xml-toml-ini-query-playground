@@ -188,6 +188,17 @@ async function instantiateModule(
         return null;
       }
 
+      const contentType = compressedResponse.headers
+        .get("content-type")
+        ?.toLowerCase();
+      if (
+        contentType &&
+        !contentType.includes("gzip") &&
+        !contentType.includes("octet-stream")
+      ) {
+        return null;
+      }
+
       const decompressedStream = compressedResponse.body.pipeThrough(
         new DecompressionStream("gzip"),
       );
