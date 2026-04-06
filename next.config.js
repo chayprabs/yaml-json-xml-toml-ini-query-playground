@@ -5,7 +5,7 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 module.exports = withBundleAnalyzer((_phase) => {
   const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
   const useGitHubPagesBasePath =
-    process.env.GITHUB_ACTIONS === "true" && Boolean(repoName);
+    process.env.GITHUB_PAGES === "true" && Boolean(repoName);
   const basePath =
     useGitHubPagesBasePath && repoName ? `/${repoName}` : undefined;
 
