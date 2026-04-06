@@ -224,7 +224,7 @@ async function instantiateModule(
 
   setInitStatus("instantiating-wasm");
 
-  if ("instantiateStreaming" in WebAssembly) {
+  if (!preferRawWasm && "instantiateStreaming" in WebAssembly) {
     try {
       const streamingResult = await WebAssembly.instantiateStreaming(
         response.clone(),
