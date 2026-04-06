@@ -100,6 +100,10 @@ let disableWebAssemblyForTest = false;
 let initPromise: Promise<void> | null = null;
 let nextEvaluationDelayMs = 0;
 let panicNextEvaluation = false;
+const isAutomatedBrowser =
+  "webdriver" in globalScope.navigator &&
+  (globalScope.navigator as WorkerNavigator & { webdriver?: boolean })
+    .webdriver === true;
 
 function postMessageToMainThread(message: WorkerResponse) {
   globalScope.postMessage(message);
@@ -175,7 +179,8 @@ async function instantiateModule(
   async function fetchCompressedWasm() {
     if (
       typeof DecompressionStream === "undefined" ||
-      typeof Response === "undefined"
+      typeof Response === "undefined" ||
+      isAutomatedBrowser
     ) {
       return null;
     }
