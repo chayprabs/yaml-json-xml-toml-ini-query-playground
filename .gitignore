@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+tsconfig.tsbuildinfo
 .codex-devserver
 .codex-devserver.pid
 playwright-report

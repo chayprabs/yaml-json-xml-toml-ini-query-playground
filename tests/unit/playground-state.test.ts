@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -44,6 +45,7 @@ test("ignores malformed hash state", () => {
 test("drops unsupported formats from decoded state", () => {
   const invalidPayload = Buffer.from(
     JSON.stringify({
+      version: 2,
       engine: "invalid",
       expression: ".foo",
       input: "foo: bar\n",
@@ -141,6 +143,7 @@ test("decodeHashState preserves unicode content", () => {
 
 test("decodeHashState ignores unknown keys and preserves known ones", () => {
   const payload = {
+    version: 2,
     engine: "yq",
     expression: ".foo",
     unknownKey: "should be dropped",
@@ -157,6 +160,7 @@ test("decodeHashState ignores unknown keys and preserves known ones", () => {
 
 test("decodeHashState rejects non-boolean for boolean fields", () => {
   const payload = {
+    version: 2,
     autoRun: "yes",
     noDoc: 1,
     prettyPrint: null,
@@ -224,7 +228,7 @@ test("canAutoRun returns false for yq with empty input", () => {
   assert.equal(canAutoRun(snapshot), false);
 });
 
-test("canAutoRun returns true for dasel with empty input", () => {
+test("canAutoRun returns false for dasel with empty input", () => {
   const snapshot = createRunSnapshot({
     ...createDefaultState(),
     engine: "dasel",
@@ -233,7 +237,7 @@ test("canAutoRun returns true for dasel with empty input", () => {
     inputFormat: "yaml",
     outputFormat: "yaml",
   });
-  assert.equal(canAutoRun(snapshot), true);
+  assert.equal(canAutoRun(snapshot), false);
 });
 
 // ── Edge cases: toggle support functions ───────────────────────────────
@@ -244,9 +248,9 @@ test("supportsNoDoc only for yq + yaml output", () => {
   assert.equal(supportsNoDoc("dasel", "yaml"), false);
 });
 
-test("supportsPrettyPrint only for yq + yaml output", () => {
-  assert.equal(supportsPrettyPrint("yq", "yaml"), true);
-  assert.equal(supportsPrettyPrint("yq", "json"), false);
+test("supportsPrettyPrint only for yq + json output", () => {
+  assert.equal(supportsPrettyPrint("yq", "json"), true);
+  assert.equal(supportsPrettyPrint("yq", "yaml"), false);
   assert.equal(supportsPrettyPrint("dasel", "yaml"), false);
 });
 
@@ -346,10 +350,15 @@ test("serializeRunSnapshot produces identical output for identical snapshots", (
 
 // ── Edge cases: MAX_SHAREABLE_HASH_LENGTH ──────────────────────────────
 
-test("encodeHashState with large input exceeds MAX_SHAREABLE_HASH_LENGTH", () => {
+test("encodeHashState uses compressed state prefix", () => {
+  const encoded = encodeHashState(createDefaultState());
+  assert.ok(encoded.startsWith("state="));
+});
+
+test("encodeHashState with large input may exceed MAX_SHAREABLE_HASH_LENGTH", () => {
   const state = {
     ...createDefaultState(),
-    input: "x".repeat(5000),
+    input: randomBytes(20_000).toString("base64url"),
   };
   const encoded = encodeHashState(state);
   assert.ok(encoded.length > MAX_SHAREABLE_HASH_LENGTH);
@@ -365,10 +374,10 @@ test("builds yq evaluate options from the run snapshot", () => {
     noDoc: true,
     prettyPrint: true,
     unwrapScalar: false,
-    outputFormat: "yaml",
+    outputFormat: "json",
   });
   assert.deepEqual(options, {
-    noDoc: true,
+    noDoc: false,
     prettyPrint: true,
     unwrapScalar: false,
   });

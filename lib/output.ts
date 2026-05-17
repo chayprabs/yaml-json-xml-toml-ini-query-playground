@@ -1,7 +1,8 @@
 import type { OutputFormat } from "@/lib/engine-types";
+import { OUTPUT_DISPLAY_MAX_CHARS } from "@/lib/validation";
 
-export const OUTPUT_TRUNCATION_THRESHOLD = 60_000;
-export const OUTPUT_HIGHLIGHT_THRESHOLD = 20_000;
+export const OUTPUT_TRUNCATION_THRESHOLD = OUTPUT_DISPLAY_MAX_CHARS;
+export const OUTPUT_HIGHLIGHT_THRESHOLD = OUTPUT_DISPLAY_MAX_CHARS;
 
 export type PreparedOutput = {
   displayOutput: string;
@@ -26,7 +27,9 @@ export function getHighlightLanguage(outputFormat: OutputFormat): string {
     case "props":
       return "properties";
     case "hcl":
+      return "hcl";
     case "csv":
+      return "csv";
     default:
       return "plaintext";
   }

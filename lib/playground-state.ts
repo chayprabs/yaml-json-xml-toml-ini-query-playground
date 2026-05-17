@@ -1,4 +1,8 @@
 import {
+  getDefaultExample,
+  getExamplesForEngine,
+} from "@/lib/examples";
+import {
   isEngineType,
   isInputFormat,
   isOutputFormat,
@@ -9,41 +13,20 @@ import {
   type InputFormat,
   type OutputFormat,
 } from "@/lib/engine-types";
+import type { PlaygroundState, RunSnapshot } from "@/lib/playground-types";
+import { canAutoRunSnapshot, validateRunRequest } from "@/lib/validation";
 
-export type Example = {
-  description: string;
-  engine: EngineType;
-  expression: string;
-  id: string;
-  input: string;
-  inputFormat: InputFormat;
-  label: string;
-  options?: Partial<Pick<PlaygroundState, "returnRoot" | "unstable">>;
-  outputFormat: OutputFormat;
-};
+export type { Example } from "@/lib/examples";
+export type { PlaygroundState, RunSnapshot } from "@/lib/playground-types";
+export { getDefaultExample, getExamplesForEngine, examples } from "@/lib/examples";
+export {
+  HASH_SYNC_DELAY_MS,
+  MAX_SHAREABLE_HASH_LENGTH,
+  decodeHashState,
+  encodeHashState,
+} from "@/lib/urlState";
 
-export type PlaygroundState = {
-  autoRun: boolean;
-  engine: EngineType;
-  expression: string;
-  input: string;
-  inputFormat: InputFormat;
-  noDoc: boolean;
-  outputFormat: OutputFormat;
-  prettyPrint: boolean;
-  readFlagsText: string;
-  returnRoot: boolean;
-  unstable: boolean;
-  unwrapScalar: boolean;
-  variablesText: string;
-  writeFlagsText: string;
-};
-
-export type RunSnapshot = Omit<PlaygroundState, "autoRun">;
-
-export const HASH_SYNC_DELAY_MS = 250;
 export const AUTO_RUN_DELAY_MS = 600;
-export const MAX_SHAREABLE_HASH_LENGTH = 4_000;
 
 export const ENGINE_PLACEHOLDERS: Record<EngineType, string> = {
   yq: ".metadata.name",
@@ -60,189 +43,17 @@ export type SyntaxHint = {
 export const ENGINE_SYNTAX_HINTS: Record<EngineType, SyntaxHint> = {
   yq: {
     docsHref: "https://mikefarah.gitbook.io/yq/",
-    docsLabel: "Open syntax docs",
-    example: ".services[] | select(.enabled == true) | .name",
-    prefix: "Expression example:",
+    docsLabel: "yq docs ↗",
+    example: ".metadata.name",
+    prefix: "Try",
   },
   dasel: {
     docsHref: "https://daseldocs.tomwright.me/",
-    docsLabel: "Open syntax docs",
-    example: 'search(name == "worker") or server.http_port',
-    prefix: "Selector example:",
+    docsLabel: "dasel docs ↗",
+    example: "server.http_port or search(key == \"val\")",
+    prefix: "Try",
   },
 };
-
-const hashEncoder = new TextEncoder();
-const hashDecoder = new TextDecoder();
-
-export const examples: Example[] = [
-  {
-    id: "k8s",
-    label: "Kubernetes deployment",
-    description: "Pull a deployment name from a realistic workload manifest.",
-    engine: "yq",
-    expression: ".metadata.name",
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-deployment
-  namespace: storefront
-  labels:
-    app: web
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: web
-  template:
-    metadata:
-      labels:
-        app: web
-    spec:
-      containers:
-        - name: api
-          image: ghcr.io/example/storefront-api:1.7.3
-          ports:
-            - containerPort: 8080`,
-  },
-  {
-    id: "compose",
-    label: "Docker Compose services",
-    description: "List service names from a multi-service Compose stack.",
-    engine: "yq",
-    expression: ".services | keys",
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `name: storefront
-services:
-  web:
-    image: nginx:1.27
-    ports:
-      - "8080:80"
-  worker:
-    image: node:20-alpine
-    command: npm run worker
-  redis:
-    image: redis:7-alpine`,
-  },
-  {
-    id: "gha",
-    label: "GitHub Actions workflow",
-    description: "Inspect reusable actions in a CI workflow file.",
-    engine: "yq",
-    expression: ".jobs.build.steps[].uses",
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `name: ci
-on:
-  push:
-    branches: [main]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm test`,
-  },
-  {
-    id: "ini-read",
-    label: "INI configuration lookup",
-    description:
-      "Read a sectioned INI config natively. INI is only available in selector mode.",
-    engine: "dasel",
-    expression: "server.http_port",
-    inputFormat: "ini",
-    outputFormat: "yaml",
-    input: `app_mode = production
-
-[server]
-http_port = 9999
-graceful_timeout = 30
-`,
-  },
-  {
-    id: "search-selector",
-    label: "Search by sibling value",
-    description:
-      "Use a search selector to find matching objects anywhere in the document.",
-    engine: "dasel",
-    expression: 'search(name == "worker")',
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `services:
-  - name: web
-    image: nginx:1.27
-    replicas: 2
-  - name: worker
-    image: ghcr.io/example/worker:2.4.1
-    replicas: 1
-  - name: cron
-    image: ghcr.io/example/cron:1.3.0
-    replicas: 1`,
-  },
-  {
-    id: "mutate-root",
-    label: "Modify and return root",
-    description:
-      "Apply an assignment selector and return the modified document instead of only the assigned node.",
-    engine: "dasel",
-    expression: 'service.image = "ghcr.io/example/api:2.1.0"',
-    inputFormat: "yaml",
-    outputFormat: "json",
-    options: {
-      returnRoot: true,
-    },
-    input: `service:
-  image: ghcr.io/example/api:1.9.3
-  replicas: 3
-  region: ap-south-1`,
-  },
-  {
-    id: "hcl-convert",
-    label: "HCL to JSON conversion",
-    description:
-      "Convert Terraform-style HCL to JSON, a format pair only available in selector mode.",
-    engine: "dasel",
-    expression: ".",
-    inputFormat: "hcl",
-    outputFormat: "json",
-    input: `resource "aws_s3_bucket" "assets" {
-  bucket = "pluck-assets"
-  acl    = "private"
-}`,
-  },
-  {
-    id: "statement-vars",
-    label: "Variables and statements",
-    description:
-      "Compose a result with variables and semicolon-separated statements in one selector.",
-    engine: "dasel",
-    expression: `$primary = services[0].host;
-$secondary = services[1].host;
-[$primary, $secondary]`,
-    inputFormat: "yaml",
-    outputFormat: "yaml",
-    input: `services:
-  - name: api
-    host: api.internal
-  - name: worker
-    host: worker.internal`,
-  },
-];
-
-export function getExamplesForEngine(engine: EngineType): Example[] {
-  return examples.filter((example) => example.engine === engine);
-}
-
-export function getDefaultExample(engine: EngineType): Example {
-  return getExamplesForEngine(engine)[0] ?? examples[0];
-}
 
 export function createDefaultState(): PlaygroundState {
   const example = getDefaultExample("yq");
@@ -265,113 +76,6 @@ export function createDefaultState(): PlaygroundState {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-export function encodeHashState(state: PlaygroundState): string {
-  const json = JSON.stringify({
-    version: 2,
-    ...state,
-  });
-  let binary = "";
-
-  for (const byte of hashEncoder.encode(json)) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return btoa(binary)
-    .replace(/\+/gu, "-")
-    .replace(/\//gu, "_")
-    .replace(/=+$/u, "");
-}
-
-export function decodeHashState(hash: string): Partial<PlaygroundState> | null {
-  const normalizedHash = hash.replace(/^#/u, "").trim();
-  if (!normalizedHash) {
-    return null;
-  }
-
-  try {
-    const padded = normalizedHash
-      .replace(/-/gu, "+")
-      .replace(/_/gu, "/")
-      .padEnd(Math.ceil(normalizedHash.length / 4) * 4, "=");
-    const decodedBinary = atob(padded);
-    const bytes = Uint8Array.from(decodedBinary, (character) =>
-      character.charCodeAt(0),
-    );
-    const decodedJson = hashDecoder.decode(bytes);
-    const parsed = JSON.parse(decodedJson) as unknown;
-
-    if (!isRecord(parsed)) {
-      return null;
-    }
-
-    const nextState: Partial<PlaygroundState> = {};
-
-    if (isEngineType(parsed.engine)) {
-      nextState.engine = parsed.engine;
-    }
-
-    if (typeof parsed.expression === "string") {
-      nextState.expression = parsed.expression;
-    }
-
-    if (typeof parsed.input === "string") {
-      nextState.input = parsed.input;
-    }
-
-    if (isInputFormat(parsed.inputFormat)) {
-      nextState.inputFormat = parsed.inputFormat;
-    }
-
-    if (isOutputFormat(parsed.outputFormat)) {
-      nextState.outputFormat = parsed.outputFormat;
-    }
-
-    if (typeof parsed.unwrapScalar === "boolean") {
-      nextState.unwrapScalar = parsed.unwrapScalar;
-    }
-
-    if (typeof parsed.noDoc === "boolean") {
-      nextState.noDoc = parsed.noDoc;
-    }
-
-    if (typeof parsed.prettyPrint === "boolean") {
-      nextState.prettyPrint = parsed.prettyPrint;
-    }
-
-    if (typeof parsed.autoRun === "boolean") {
-      nextState.autoRun = parsed.autoRun;
-    }
-
-    if (typeof parsed.returnRoot === "boolean") {
-      nextState.returnRoot = parsed.returnRoot;
-    }
-
-    if (typeof parsed.unstable === "boolean") {
-      nextState.unstable = parsed.unstable;
-    }
-
-    if (typeof parsed.readFlagsText === "string") {
-      nextState.readFlagsText = parsed.readFlagsText;
-    }
-
-    if (typeof parsed.writeFlagsText === "string") {
-      nextState.writeFlagsText = parsed.writeFlagsText;
-    }
-
-    if (typeof parsed.variablesText === "string") {
-      nextState.variablesText = parsed.variablesText;
-    }
-
-    return nextState;
-  } catch {
-    return null;
-  }
-}
-
 export function supportsNoDoc(
   engine: EngineType,
   outputFormat: OutputFormat,
@@ -383,7 +87,7 @@ export function supportsPrettyPrint(
   engine: EngineType,
   outputFormat: OutputFormat,
 ): boolean {
-  return engine === "yq" && outputFormat === "yaml";
+  return engine === "yq" && outputFormat === "json";
 }
 
 export function supportsUnwrapScalar(
@@ -456,15 +160,13 @@ export function serializeRunSnapshot(snapshot: RunSnapshot): string {
 }
 
 export function canAutoRun(snapshot: RunSnapshot): boolean {
-  if (snapshot.expression.trim().length === 0) {
-    return false;
-  }
-
-  if (snapshot.engine === "dasel") {
-    return true;
-  }
-
-  return snapshot.input.trim().length > 0;
+  return canAutoRunSnapshot(
+    snapshot.engine,
+    snapshot.input,
+    snapshot.expression,
+    snapshot.inputFormat,
+    snapshot.outputFormat,
+  );
 }
 
 export function parseFlagMap(flagText: string): Record<string, string> {
@@ -530,9 +232,18 @@ export function createEngineEvaluateOptions(
 ): EngineEvaluateOptions {
   if (snapshot.engine === "yq") {
     return {
-      noDoc: snapshot.noDoc,
-      prettyPrint: snapshot.prettyPrint,
-      unwrapScalar: snapshot.unwrapScalar,
+      noDoc: supportsNoDoc(snapshot.engine, snapshot.outputFormat)
+        ? snapshot.noDoc
+        : false,
+      prettyPrint: supportsPrettyPrint(snapshot.engine, snapshot.outputFormat)
+        ? snapshot.prettyPrint
+        : false,
+      unwrapScalar: supportsUnwrapScalar(
+        snapshot.engine,
+        snapshot.outputFormat,
+      )
+        ? snapshot.unwrapScalar
+        : false,
     };
   }
 
@@ -544,3 +255,5 @@ export function createEngineEvaluateOptions(
     writeFlags: parseFlagMap(snapshot.writeFlagsText),
   };
 }
+
+export { isEngineType, isInputFormat, isOutputFormat, validateRunRequest };

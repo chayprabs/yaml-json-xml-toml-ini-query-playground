@@ -17,11 +17,12 @@ test("keeps smaller output intact and highlightable", () => {
   assert.equal(prepared.truncated, false);
 });
 
-test("disables highlighting before truncation for large output", () => {
-  const prepared = prepareOutput("x".repeat(OUTPUT_HIGHLIGHT_THRESHOLD + 1));
+test("keeps highlighting enabled for truncated preview capped at the display limit", () => {
+  const prepared = prepareOutput("x".repeat(OUTPUT_TRUNCATION_THRESHOLD + 1));
 
-  assert.equal(prepared.truncated, false);
-  assert.equal(prepared.highlightEnabled, false);
+  assert.equal(prepared.truncated, true);
+  assert.equal(prepared.displayOutput.length, OUTPUT_TRUNCATION_THRESHOLD);
+  assert.equal(prepared.highlightEnabled, true);
 });
 
 test("truncates extremely large output and reports the hidden size", () => {
@@ -107,10 +108,10 @@ test("maps props to properties", () => {
   assert.equal(getHighlightLanguage("props"), "properties");
 });
 
-test("maps csv to plaintext", () => {
-  assert.equal(getHighlightLanguage("csv"), "plaintext");
+test("maps csv to csv", () => {
+  assert.equal(getHighlightLanguage("csv"), "csv");
 });
 
-test("maps hcl to plaintext", () => {
-  assert.equal(getHighlightLanguage("hcl"), "plaintext");
+test("maps hcl to hcl", () => {
+  assert.equal(getHighlightLanguage("hcl"), "hcl");
 });

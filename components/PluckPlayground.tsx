@@ -13,6 +13,7 @@ import {
   type MutableRefObject,
 } from "react";
 
+import { OutputSyntax } from "@/components/OutputSyntax";
 import {
   evaluate,
   getEngineInitError,
@@ -24,6 +25,7 @@ import {
   type InputFormat,
   type OutputFormat,
 } from "@/lib/engine";
+import { sanitizeEngineErrorMessage } from "@/lib/errorDisplay";
 import {
   ENGINE_DISPLAY_NAMES,
   ENGINE_INPUT_FORMATS,
@@ -31,7 +33,7 @@ import {
   ENGINE_OVERALL_STATUS_LABELS,
   ENGINE_STATUS_LABELS,
 } from "@/lib/engine-types";
-import { getHighlightLanguage, prepareOutput } from "@/lib/output";
+import { prepareOutput } from "@/lib/output";
 import {
   AUTO_RUN_DELAY_MS,
   ENGINE_PLACEHOLDERS,
@@ -44,7 +46,6 @@ import {
   createRunSnapshot,
   decodeHashState,
   encodeHashState,
-  getDefaultExample,
   getExamplesForEngine,
   normalizeFormatsForEngine,
   serializeRunSnapshot,
@@ -55,6 +56,13 @@ import {
   type PlaygroundState,
   type RunSnapshot,
 } from "@/lib/playground-state";
+import {
+  getInputByteSize,
+  MAX_EXPRESSION_CHARS,
+  shouldWarnLargeInput,
+  validateRunRequest,
+  VALIDATION_MESSAGES,
+} from "@/lib/validation";
 
 type CopyState = "idle" | "copied" | "failed";
 
@@ -108,27 +116,21 @@ const OutputSurface = memo(function OutputSurface({
   displayOutput,
   error,
   highlightEnabled,
-  highlightedOutput,
   isRunning,
   outputFormat,
   outputRef,
   outputScrollTopRef,
   truncated,
-  truncatedCharacters,
 }: {
   displayOutput: string;
   error: string | null;
   highlightEnabled: boolean;
-  highlightedOutput: string;
   isRunning: boolean;
   outputFormat: OutputFormat;
   outputRef: MutableRefObject<HTMLDivElement | null>;
   outputScrollTopRef: MutableRefObject<number>;
   truncated: boolean;
-  truncatedCharacters: number;
 }) {
-  const language = getHighlightLanguage(outputFormat);
-
   return (
     <>
       <div
@@ -140,15 +142,20 @@ const OutputSurface = memo(function OutputSurface({
           outputScrollTopRef.current = event.currentTarget.scrollTop;
         }}
       >
+        {isRunning ? (
+          <p
+            data-testid="running-label"
+            className="mb-2 font-[family-name:var(--font-mono)] text-sm text-paper/80"
+          >
+            {VALIDATION_MESSAGES.running}
+          </p>
+        ) : null}
+
         {displayOutput ? (
           highlightEnabled ? (
-            <pre className="m-0 whitespace-pre-wrap break-words font-[family-name:var(--font-mono)] text-sm leading-6 text-paper">
-              <code
-                className={`hljs language-${language} bg-transparent p-0`}
-                data-testid="output-content"
-                dangerouslySetInnerHTML={{ __html: highlightedOutput }}
-              />
-            </pre>
+            <div data-testid="output-content" className="text-paper">
+              <OutputSyntax code={displayOutput} outputFormat={outputFormat} />
+            </div>
           ) : (
             <pre
               data-testid="output-content"
@@ -157,14 +164,16 @@ const OutputSurface = memo(function OutputSurface({
               <code>{displayOutput}</code>
             </pre>
           )
-        ) : (
+        ) : null}
+
+        {!isRunning && !displayOutput ? (
           <div
             data-testid="output-content"
             className="font-[family-name:var(--font-mono)] text-sm leading-6 text-paper/45"
           >
             Run an expression to see the transformed output here.
           </div>
-        )}
+        ) : null}
       </div>
 
       {truncated ? (
@@ -172,9 +181,7 @@ const OutputSurface = memo(function OutputSurface({
           data-testid="truncation-notice"
           className="rounded-[1.3rem] border border-brass/35 bg-brass/10 px-4 py-3 text-sm leading-6 text-ink"
         >
-          Output truncated for responsive rendering.{" "}
-          {truncatedCharacters.toLocaleString()} characters are hidden from the
-          preview.
+          {VALIDATION_MESSAGES.outputTruncated}
         </div>
       ) : null}
 
@@ -207,7 +214,7 @@ function downloadOutput(fullOutput: string, outputFormat: OutputFormat) {
   const extension = outputFormat === "props" ? "properties" : outputFormat;
 
   anchor.href = url;
-  anchor.download = `pluck-output.${extension}`;
+  anchor.download = `output.${extension}`;
   anchor.click();
 
   window.setTimeout(() => {
@@ -221,7 +228,7 @@ function engineDescription(engine: EngineType): string {
     : "Selector-based queries plus native INI and HCL support, with search and write-style operations exposed safely in the browser.";
 }
 
-export function Playground() {
+export function PluckPlayground() {
   const [settings, setSettings] = useState<PlaygroundState>(createDefaultState);
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [durationMs, setDurationMs] = useState<number | null>(null);
@@ -230,7 +237,6 @@ export function Playground() {
   );
   const [error, setError] = useState<string | null>(null);
   const [hasHydratedHash, setHasHydratedHash] = useState<boolean>(false);
-  const [highlightedOutput, setHighlightedOutput] = useState<string>("");
   const [initError, setInitError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [output, setOutput] = useState<string>("");
@@ -261,9 +267,35 @@ export function Playground() {
     () => ENGINE_OUTPUT_FORMATS[settings.engine],
     [settings.engine],
   );
+  const inputStats = useMemo(
+    () => ({
+      bytes: getInputByteSize(settings.input),
+      chars: settings.input.length,
+    }),
+    [settings.input],
+  );
+
   const activeExamples = useMemo(
     () => getExamplesForEngine(settings.engine),
     [settings.engine],
+  );
+
+  const runGate = useMemo(
+    () =>
+      validateRunRequest(
+        settings.engine,
+        settings.input,
+        settings.expression,
+        settings.inputFormat,
+        settings.outputFormat,
+      ),
+    [
+      settings.engine,
+      settings.input,
+      settings.expression,
+      settings.inputFormat,
+      settings.outputFormat,
+    ],
   );
 
   const runSnapshot = useCallback(
@@ -308,10 +340,14 @@ export function Playground() {
         startTransition(() => {
           setDurationMs(performance.now() - startedAt);
           setOutput("");
-          setError(
+          const rawMessage =
             evaluationError instanceof Error
               ? evaluationError.message
-              : "Evaluation failed with an unknown error.",
+              : "Evaluation failed with an unknown error.";
+          setError(
+            rawMessage === VALIDATION_MESSAGES.workerTimeout
+              ? rawMessage
+              : sanitizeEngineErrorMessage(rawMessage),
           );
         });
       } finally {
@@ -401,7 +437,15 @@ export function Playground() {
       }
     });
 
-    void initEngine().catch((initFailure: unknown) => {
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedHash) {
+      return;
+    }
+
+    void initEngine(settings.engine).catch((initFailure: unknown) => {
       if (!isMountedRef.current) {
         return;
       }
@@ -412,9 +456,7 @@ export function Playground() {
           : "Failed to initialize the browser engines.",
       );
     });
-
-    return unsubscribe;
-  }, []);
+  }, [hasHydratedHash, settings.engine]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -452,9 +494,7 @@ export function Playground() {
       const nextHash = encodeHashState(settings);
 
       if (nextHash.length > MAX_SHAREABLE_HASH_LENGTH) {
-        setShareWarning(
-          "This session is too large to keep in the URL. Shorten the input before sharing it.",
-        );
+        setShareWarning(VALIDATION_MESSAGES.urlTooLarge);
         return;
       }
 
@@ -536,37 +576,6 @@ export function Playground() {
     };
   }, [copyState]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!preparedOutput.highlightEnabled || !preparedOutput.displayOutput) {
-      setHighlightedOutput("");
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void import("@/lib/highlighter").then(({ highlightOutput }) => {
-      if (cancelled) {
-        return;
-      }
-
-      startTransition(() => {
-        setHighlightedOutput(
-          highlightOutput(preparedOutput.displayOutput, settings.outputFormat),
-        );
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    preparedOutput.displayOutput,
-    preparedOutput.highlightEnabled,
-    settings.outputFormat,
-  ]);
-
   useLayoutEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputScrollTopRef.current;
@@ -592,12 +601,12 @@ export function Playground() {
       noDoc: false,
       outputFormat: example.outputFormat,
       prettyPrint: false,
-      readFlagsText: "",
+      readFlagsText: example.readFlagsText ?? "",
       returnRoot: example.options?.returnRoot ?? false,
       unstable: example.options?.unstable ?? false,
       unwrapScalar: true,
       variablesText: "",
-      writeFlagsText: "",
+      writeFlagsText: example.writeFlagsText ?? "",
     });
 
     setSettings(nextState);
@@ -623,22 +632,18 @@ export function Playground() {
       return;
     }
 
-    const example = getDefaultExample(nextEngine);
+    const current = settingsRef.current;
     const nextState = normalizeFormatsForEngine({
-      ...settingsRef.current,
+      ...current,
       engine: nextEngine,
-      expression: example.expression,
-      input: example.input,
-      inputFormat: example.inputFormat,
-      noDoc: false,
-      outputFormat: example.outputFormat,
-      prettyPrint: false,
-      readFlagsText: "",
-      returnRoot: example.options?.returnRoot ?? false,
-      unstable: example.options?.unstable ?? false,
-      unwrapScalar: true,
-      variablesText: "",
-      writeFlagsText: "",
+      noDoc: nextEngine === "yq" ? current.noDoc : false,
+      prettyPrint: nextEngine === "yq" ? current.prettyPrint : false,
+      unwrapScalar: nextEngine === "yq" ? current.unwrapScalar : true,
+      readFlagsText: nextEngine === "dasel" ? current.readFlagsText : "",
+      writeFlagsText: nextEngine === "dasel" ? current.writeFlagsText : "",
+      variablesText: nextEngine === "dasel" ? current.variablesText : "",
+      returnRoot: nextEngine === "dasel" ? current.returnRoot : false,
+      unstable: nextEngine === "dasel" ? current.unstable : false,
     });
 
     latestRequestedSequenceRef.current = ++nextRunSequenceRef.current;
@@ -716,7 +721,20 @@ export function Playground() {
 
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
-      void requestRun(createRunSnapshot(settingsRef.current));
+      const snapshot = createRunSnapshot(settingsRef.current);
+      if (
+        !validateRunRequest(
+          snapshot.engine,
+          snapshot.input,
+          snapshot.expression,
+          snapshot.inputFormat,
+          snapshot.outputFormat,
+        ).ok
+      ) {
+        return;
+      }
+
+      void requestRun(snapshot);
     }
   }
 
@@ -843,15 +861,16 @@ export function Playground() {
               <span className="text-xs font-semibold uppercase tracking-[0.28em] text-ink/55">
                 {settings.engine === "yq" ? "Expression" : "Selector"}
               </span>
-              <textarea
+              <input
+                type="text"
                 data-testid="expression-input"
-                className="min-h-16 resize-y rounded-2xl border border-ink/10 bg-white px-4 py-3 font-[family-name:var(--font-mono)] text-sm text-ink shadow-sm outline-none transition focus:border-ember/50 focus:ring-2 focus:ring-ember/30"
+                maxLength={MAX_EXPRESSION_CHARS}
+                className="h-12 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 font-[family-name:var(--font-mono)] text-sm text-ink shadow-sm outline-none transition focus:border-ember/50 focus:ring-2 focus:ring-ember/30"
                 value={settings.expression}
                 placeholder={ENGINE_PLACEHOLDERS[settings.engine]}
                 onChange={(event) =>
                   updateSettings({ expression: event.target.value })
                 }
-                rows={2}
                 spellCheck={false}
               />
               <p
@@ -861,7 +880,8 @@ export function Playground() {
                 {syntaxHint.prefix}{" "}
                 <code className="font-[family-name:var(--font-mono)]">
                   {syntaxHint.example}
-                </code>{" "}
+                </code>
+                {" — "}
                 <a
                   className="font-semibold text-ember underline decoration-ember/30 underline-offset-2 transition hover:text-ink"
                   href={syntaxHint.docsHref}
@@ -871,6 +891,14 @@ export function Playground() {
                   {syntaxHint.docsLabel}
                 </a>
               </p>
+              {!runGate.ok ? (
+                <p
+                  data-testid="validation-message"
+                  className="text-xs leading-5 text-danger"
+                >
+                  {runGate.message}
+                </p>
+              ) : null}
             </label>
 
             <label className="grid gap-2">
@@ -924,13 +952,13 @@ export function Playground() {
               <button
                 type="button"
                 data-testid="run-button"
-                disabled={!isReady || isRunning}
+                disabled={!isReady || isRunning || !runGate.ok}
                 className="min-h-12 rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-ember disabled:cursor-not-allowed disabled:bg-ink/50"
                 onClick={() =>
                   void requestRun(createRunSnapshot(settingsRef.current))
                 }
               >
-                {isRunning ? "Running..." : "Run"}
+                {isRunning ? "Running…" : "Run"}
               </button>
             </div>
 
@@ -974,7 +1002,9 @@ export function Playground() {
                 <span className="font-semibold text-ink">
                   {ENGINE_DISPLAY_NAMES[engine]}:
                 </span>{" "}
-                {ENGINE_STATUS_LABELS[engineSnapshot.engines[engine].status]}
+                {isRunning && settings.engine === engine
+                  ? VALIDATION_MESSAGES.running
+                  : ENGINE_STATUS_LABELS[engineSnapshot.engines[engine].status]}
               </div>
             ))}
 
@@ -999,7 +1029,7 @@ export function Playground() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 max-w-md">
             <ToggleOption
               checked={settings.autoRun}
               description="Evaluate automatically after 600ms when the input, query, or formats change."
@@ -1007,7 +1037,13 @@ export function Playground() {
               onChange={(autoRun) => updateSettings({ autoRun })}
               testId="auto-run-toggle"
             />
+          </div>
 
+          <details className="mt-4 rounded-2xl border border-ink/10 bg-white/50 p-4" open>
+            <summary className="cursor-pointer text-sm font-semibold text-ink">
+              Engine controls
+            </summary>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
             {settings.engine === "yq" ? (
               <>
                 <ToggleOption
@@ -1035,7 +1071,7 @@ export function Playground() {
                 />
                 <ToggleOption
                   checked={settings.prettyPrint}
-                  description="Apply the engine's pretty-print expression so YAML output uses expanded block style."
+                  description="Pretty-print JSON output (indentation and line breaks)."
                   disabled={
                     !supportsPrettyPrint(settings.engine, settings.outputFormat)
                   }
@@ -1055,8 +1091,8 @@ export function Playground() {
                 />
                 <ToggleOption
                   checked={settings.unstable}
-                  description="Enable selectors guarded behind the unstable execution option."
-                  label="Enable unstable selectors"
+                  description="Experimental selector features may change behaviour between releases."
+                  label="Unstable selectors (warning)"
                   onChange={(unstable) => updateSettings({ unstable })}
                   testId="unstable-toggle"
                 />
@@ -1111,7 +1147,8 @@ export function Playground() {
                 </div>
               </>
             )}
-          </div>
+            </div>
+          </details>
         </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -1124,6 +1161,20 @@ export function Playground() {
                 Shared in the URL hash for bookmarking
               </span>
             </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink/60">
+              <span data-testid="input-counter">
+                {inputStats.chars.toLocaleString()} characters ·{" "}
+                {inputStats.bytes.toLocaleString()} bytes
+              </span>
+            </div>
+            {shouldWarnLargeInput(settings.input) ? (
+              <p
+                data-testid="input-large-warning"
+                className="text-xs leading-5 text-amber-900"
+              >
+                {VALIDATION_MESSAGES.inputLargeWarning}
+              </p>
+            ) : null}
             <textarea
               data-testid="input-editor"
               className="min-h-[24rem] rounded-[1.5rem] border border-ink/10 bg-[#fffdfa] px-4 py-4 font-[family-name:var(--font-mono)] text-sm leading-6 text-ink shadow-inner outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
@@ -1159,7 +1210,7 @@ export function Playground() {
                       ? "Copy failed"
                       : "Copy"}
                 </button>
-                {preparedOutput.truncated ? (
+                {preparedOutput.fullOutput ? (
                   <button
                     type="button"
                     data-testid="download-output-button"
@@ -1171,7 +1222,7 @@ export function Playground() {
                       )
                     }
                   >
-                    Download full result
+                    Download
                   </button>
                 ) : null}
                 <span className="text-xs text-ink/55">
@@ -1184,13 +1235,11 @@ export function Playground() {
               displayOutput={preparedOutput.displayOutput}
               error={activeError}
               highlightEnabled={preparedOutput.highlightEnabled}
-              highlightedOutput={highlightedOutput}
               isRunning={isRunning}
               outputFormat={settings.outputFormat}
               outputRef={outputRef}
               outputScrollTopRef={outputScrollTopRef}
               truncated={preparedOutput.truncated}
-              truncatedCharacters={preparedOutput.truncatedCharacters}
             />
 
             {shareWarning ? (

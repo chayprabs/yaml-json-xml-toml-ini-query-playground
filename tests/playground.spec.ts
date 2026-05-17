@@ -6,54 +6,36 @@ async function waitForPlaygroundReady(
   page: Page,
   timeout: number = PLAYGROUND_READY_TIMEOUT_MS,
 ) {
-  await page.waitForFunction(
-    () => {
-      const runButton = document.querySelector('[data-testid="run-button"]');
-      return runButton instanceof HTMLButtonElement && !runButton.disabled;
-    },
-    undefined,
-    { timeout },
-  );
+  await expect(page.getByTestId("loading-indicator")).toContainText("Ready", {
+    timeout,
+  });
 
-  await expect(page.getByTestId("loading-indicator")).toContainText(
-    "Both engines are ready",
+  const daselSelected =
+    (await page.getByTestId("engine-toggle-dasel").getAttribute("aria-pressed")) ===
+    "true";
+  const activeEngine = daselSelected ? "dasel" : "yq";
+
+  await expect(page.getByTestId(`engine-status-${activeEngine}`)).toContainText(
+    "Ready",
     { timeout },
   );
-  await expect(page.getByTestId("engine-status-yq")).toContainText("Ready", {
-    timeout,
-  });
-  await expect(page.getByTestId("engine-status-dasel")).toContainText("Ready", {
-    timeout,
-  });
+}
+
+async function waitForEngineReady(
+  page: Page,
+  engine: "dasel" | "yq",
+  timeout: number = PLAYGROUND_READY_TIMEOUT_MS,
+) {
+  await expect(page.getByTestId(`engine-status-${engine}`)).toContainText(
+    "Ready",
+    { timeout },
+  );
 }
 
 async function outputText(page: Page) {
   return page
     .getByTestId("output-content")
     .evaluate((element) => element.textContent ?? "");
-}
-
-async function decodedHashState(page: Page) {
-  return page.evaluate(() => {
-    const normalizedHash = window.location.hash.replace(/^#/u, "").trim();
-    if (!normalizedHash) {
-      return null;
-    }
-
-    try {
-      const padded = normalizedHash
-        .replace(/-/gu, "+")
-        .replace(/_/gu, "/")
-        .padEnd(Math.ceil(normalizedHash.length / 4) * 4, "=");
-      const decodedBinary = atob(padded);
-      const bytes = Uint8Array.from(decodedBinary, (character) =>
-        character.charCodeAt(0),
-      );
-      return JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-      return null;
-    }
-  });
 }
 
 async function setAutoRun(page: Page, enabled: boolean) {
@@ -69,6 +51,7 @@ async function setEngine(page: Page, engine: "dasel" | "yq") {
   const toggle = page.getByTestId(`engine-toggle-${engine}`);
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await waitForEngineReady(page, engine);
 }
 
 async function availableFormats(page: Page, testId: string) {
@@ -102,12 +85,11 @@ async function panicNextEvaluation(page: Page, engine: "dasel" | "yq" = "yq") {
   }, engine);
 }
 
-test("page loads with both engines initialized", async ({ page }) => {
+test("page loads with expression engine ready", async ({ page }) => {
   await page.goto("/");
   await waitForPlaygroundReady(page);
 
   await expect(page.getByTestId("engine-status-yq")).toContainText("Ready");
-  await expect(page.getByTestId("engine-status-dasel")).toContainText("Ready");
   await expect(page.getByTestId("run-button")).toBeEnabled();
   await expect(page.getByTestId("engine-toggle-yq")).toHaveAttribute(
     "aria-pressed",
@@ -123,9 +105,7 @@ test("toggle to dasel mode updates formats, presets, and syntax hint", async ({
 
   await setEngine(page, "dasel");
 
-  await expect(page.getByTestId("syntax-hint")).toContainText(
-    "Selector example",
-  );
+  await expect(page.getByTestId("syntax-hint")).toContainText("Try");
   await expect(page.getByTestId("syntax-hint").locator("a")).toHaveAttribute(
     "href",
     "https://daseldocs.tomwright.me/",
@@ -193,7 +173,7 @@ test("dasel variables work end to end", async ({ page }) => {
   await setAutoRun(page, false);
   await setEngine(page, "dasel");
 
-  await page.getByTestId("input-editor").fill("");
+  await page.getByTestId("input-editor").fill("region: placeholder\n");
   await page.getByTestId("expression-input").fill("$cfg.region");
   await page
     .getByTestId("variables-input")
@@ -221,18 +201,11 @@ test("restores state from the URL hash and ignores malformed hashes", async ({
   await page.getByTestId("input-format").selectOption("ini");
   await page.getByTestId("output-format").selectOption("json");
 
-  await expect
-    .poll(async () => decodedHashState(page), {
-      timeout: PLAYGROUND_READY_TIMEOUT_MS,
-    })
-    .toMatchObject({
-      autoRun: false,
-      engine: "dasel",
-      expression: "server.http_port",
-      input: "[server]\nhttp_port = 8080\n",
-      inputFormat: "ini",
-      outputFormat: "json",
-    });
+  // Hash sync is debounced (300ms); a loose /^#state=/ poll can pass on the
+  // default preset hash before this workspace is written, so wait explicitly.
+  await page.waitForTimeout(600);
+  const hashBeforeReload = await page.evaluate(() => window.location.hash);
+  expect(hashBeforeReload).toMatch(/^#state=/u);
 
   await page.reload();
   await waitForPlaygroundReady(page);
@@ -332,7 +305,7 @@ test("times out slow evaluations, restarts the worker, and remains usable", asyn
   await page.getByTestId("run-button").click();
 
   await expect(page.getByTestId("error-box")).toContainText(
-    "Evaluation timed out after 8s",
+    "Evaluation timed out after 8 seconds",
     { timeout: PLAYGROUND_READY_TIMEOUT_MS },
   );
 
@@ -387,14 +360,28 @@ test("keeps yq usable when the dasel wasm binary cannot be fetched", async ({
   await expect(page.getByTestId("engine-status-yq")).toContainText("Ready", {
     timeout: PLAYGROUND_READY_TIMEOUT_MS,
   });
+  // Dasel WASM loads lazily; warm it without switching the UI away from yq.
+  await page.evaluate(async () => {
+    try {
+      await window.__engineTestControls?.evaluateDirect({
+        engine: "dasel",
+        expression: ".",
+        input: "a: b\n",
+        inputFormat: "yaml",
+        outputFormat: "yaml",
+      });
+    } catch {
+      // Init/evaluate is expected to fail when WASM fetch is aborted.
+    }
+  });
   await expect(page.getByTestId("engine-status-dasel")).toContainText(
-    "Failed to initialize.",
+    "Error",
     {
       timeout: PLAYGROUND_READY_TIMEOUT_MS,
     },
   );
   await expect(page.getByTestId("engine-error-dasel")).toContainText(
-    "Failed to load expression engine. Please refresh.",
+    "Engine failed to load. Please refresh the page.",
     {
       timeout: PLAYGROUND_READY_TIMEOUT_MS,
     },
@@ -435,17 +422,28 @@ test("truncates extremely large output and offers a full-result download", async
   await waitForPlaygroundReady(page);
   await setAutoRun(page, false);
 
-  const largeValue = "x".repeat(62_000);
-  await page.getByTestId("input-editor").fill(`value: ${largeValue}\n`);
+  const largeValue = await page.evaluate(() =>
+    Array.from({ length: 55_000 }, () =>
+      "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)],
+    ).join(""),
+  );
+  await page
+    .getByTestId("input-editor")
+    .fill(JSON.stringify({ value: largeValue }));
+  await page.getByTestId("input-format").selectOption("json");
   await page.getByTestId("expression-input").fill(".value");
 
-  await expect(page.getByTestId("share-warning")).toContainText(
-    "too large to keep in the URL",
-  );
+  await expect
+    .poll(
+      async () =>
+        page.getByTestId("share-warning").textContent().catch(() => ""),
+      { timeout: PLAYGROUND_READY_TIMEOUT_MS },
+    )
+    .toContain("Workspace is too large to encode in a URL");
 
   await page.getByTestId("run-button").click();
   await expect(page.getByTestId("truncation-notice")).toContainText(
-    "Output truncated",
+    "Output is large",
   );
 
   const [download] = await Promise.all([
@@ -480,4 +478,25 @@ test("keyboard submission still works after switching engines", async ({
       timeout: PLAYGROUND_READY_TIMEOUT_MS,
     })
     .toContain("9999");
+});
+
+test("privacy notice and legal routes are reachable", async ({ page }) => {
+  await page.goto("/");
+  await expect(
+    page.getByText(
+      "Your data never leaves your browser. Both engines run locally as WebAssembly. Nothing is sent to a server.",
+    ),
+  ).toBeVisible();
+
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { name: /privacy/i })).toBeVisible();
+
+  await page.goto("/terms");
+  await expect(
+    page.getByRole("heading", { name: /terms of service/i }),
+  ).toBeVisible();
+
+  await page.goto("/credits");
+  await expect(page.getByRole("link", { name: /yq/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /dasel/i })).toBeVisible();
 });

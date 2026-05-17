@@ -102,9 +102,6 @@ type ManagedEngineState = {
 };
 
 const EVALUATION_TIMEOUT_MS = 8_000;
-const COMBINED_INIT_START_MARK = "engine:init:start";
-const COMBINED_INIT_READY_MARK = "engine:init:ready";
-const COMBINED_INIT_MEASURE = "engine:init";
 
 declare global {
   interface Window {
@@ -147,7 +144,6 @@ const engineStates = Object.fromEntries(
   ]),
 ) as Record<EngineType, ManagedEngineState>;
 
-let initAllPromise: Promise<void> | null = null;
 let browserTeardownStarted = false;
 let browserTeardownListenerRegistered = false;
 
@@ -165,11 +161,16 @@ function buildSnapshot(): EngineInitSnapshot {
   const statuses = ENGINE_TYPES.map((engine) => engineStates[engine].status);
   const overallStatus = statuses.some((status) => status === "error")
     ? "error"
-    : statuses.every((status) => status === "ready")
+    : statuses.some((status) => status === "ready")
       ? "ready"
-      : statuses.every((status) => status === "idle")
-        ? "idle"
-        : "loading";
+      : statuses.some(
+            (status) =>
+              status !== "idle" &&
+              status !== "ready" &&
+              status !== "error",
+          )
+        ? "loading"
+        : "idle";
 
   return {
     engines,
@@ -183,10 +184,6 @@ function notifyInitListeners() {
   for (const listener of initListeners) {
     listener(snapshot);
   }
-}
-
-function clearCombinedInitPromise() {
-  initAllPromise = null;
 }
 
 function clearPendingEvaluationTimeouts(engine: EngineType) {
@@ -216,19 +213,6 @@ function setEngineStatus(
       performance.mark(`engine:init:${engine}:ready`);
     } catch {
       // Ignore repeated mark collisions from worker restarts.
-    }
-
-    if (ENGINE_TYPES.every((kind) => engineStates[kind].status === "ready")) {
-      try {
-        performance.mark(COMBINED_INIT_READY_MARK);
-        performance.measure(
-          COMBINED_INIT_MEASURE,
-          COMBINED_INIT_START_MARK,
-          COMBINED_INIT_READY_MARK,
-        );
-      } catch {
-        // Ignore repeated mark collisions from worker restarts.
-      }
     }
   }
 
@@ -271,7 +255,6 @@ function beginBrowserTeardown() {
   }
 
   browserTeardownStarted = true;
-  clearCombinedInitPromise();
 
   for (const engine of ENGINE_TYPES) {
     const state = engineStates[engine];
@@ -318,7 +301,6 @@ function handleWorkerFailure(
   state.initStarted = false;
   rejectEngineInitPromise(engine, error);
   rejectPendingEvaluations(engine, error);
-  clearCombinedInitPromise();
   setEngineStatus(engine, "error", error);
 
   if (options?.restart) {
@@ -439,14 +421,6 @@ function ensureWorker(engine: EngineType): Worker {
   return state.worker;
 }
 
-function markCombinedInitStart() {
-  try {
-    performance.mark(COMBINED_INIT_START_MARK);
-  } catch {
-    // Ignore repeated mark collisions from retries.
-  }
-}
-
 function startWorkerInit(engine: EngineType) {
   if (browserTeardownStarted) {
     return;
@@ -530,27 +504,14 @@ export function getEngineInitError(engine?: EngineType): string | null {
   return null;
 }
 
-export async function initEngine(engine?: EngineType): Promise<void> {
-  if (engine) {
-    return initEngineFor(engine);
-  }
-
-  if (initAllPromise) {
-    return initAllPromise;
-  }
-
+export async function initEngine(engine: EngineType): Promise<void> {
   if (typeof window === "undefined") {
     throw new Error(
       "The browser engine can only be initialized in the browser.",
     );
   }
 
-  markCombinedInitStart();
-  initAllPromise = Promise.allSettled(
-    ENGINE_TYPES.map((kind) => initEngineFor(kind)),
-  ).then(() => undefined);
-
-  return initAllPromise;
+  return initEngineFor(engine);
 }
 
 export async function evaluate(
@@ -579,7 +540,7 @@ export async function evaluate(
       );
       reject(
         new Error(
-          `Evaluation timed out after ${EVALUATION_TIMEOUT_MS / 1000}s.`,
+          "Evaluation timed out after 8 seconds. The engine has been restarted.",
         ),
       );
     }, EVALUATION_TIMEOUT_MS);
@@ -626,7 +587,6 @@ export async function delayNextEvaluationForTest(
 }
 
 export function __resetEngineStateForTest() {
-  clearCombinedInitPromise();
   browserTeardownStarted = false;
 
   for (const engine of ENGINE_TYPES) {
@@ -697,14 +657,4 @@ function registerBrowserTeardownListener() {
 if (typeof window !== "undefined" && typeof Worker !== "undefined") {
   registerTestControls();
   registerBrowserTeardownListener();
-  queueMicrotask(() => {
-    void initEngine().catch((error: unknown) => {
-      const normalizedError = normalizeEngineError(error);
-      for (const engine of ENGINE_TYPES) {
-        if (engineStates[engine].status !== "error") {
-          setEngineStatus(engine, "error", normalizedError);
-        }
-      }
-    });
-  });
 }

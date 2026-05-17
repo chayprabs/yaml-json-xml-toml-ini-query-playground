@@ -24,7 +24,10 @@ export default function Home() {
           <div className="grid gap-3 rounded-2xl border border-ink/10 bg-paper/80 p-5 text-sm text-ink/75 sm:grid-cols-3 sm:gap-5">
             <div>
               <p className="font-semibold text-ink">Engines</p>
-              <p>Expression and selector modes, both loaded eagerly</p>
+              <p>
+                Expression and selector modes; each WebAssembly worker loads the
+                first time you run that engine.
+              </p>
             </div>
             <div>
               <p className="font-semibold text-ink">Formats</p>
@@ -62,13 +65,31 @@ export default function Home() {
 
       <PlaygroundBoundary />
 
-      <footer className="pb-4 text-center">
-        <Link
-          href="/credits"
-          className="text-xs text-ink/55 transition hover:text-ember"
-        >
-          Open source credits
-        </Link>
+      <footer className="space-y-3 pb-6 text-center text-sm text-ink/70">
+        <p data-testid="privacy-notice">
+          Your data never leaves your browser. Both engines run locally as
+          WebAssembly. Nothing is sent to a server.
+        </p>
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-ink/55">
+          <Link className="transition hover:text-ember" href="/privacy">
+            Privacy
+          </Link>
+          <Link className="transition hover:text-ember" href="/terms">
+            Terms
+          </Link>
+          <Link className="transition hover:text-ember" href="/credits">
+            Credits
+          </Link>
+          <Link
+            className="transition hover:text-ember"
+            href="/third-party-licenses"
+          >
+            Third-party licenses
+          </Link>
+        </div>
+        <p className="text-xs text-ink/50">
+          © 2026 Chaitanya Prabuddha — MIT License
+        </p>
       </footer>
     </main>
   );

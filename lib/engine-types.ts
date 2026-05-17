@@ -77,23 +77,23 @@ export const ENGINE_DISPLAY_NAMES: Record<EngineType, string> = {
 };
 
 export const ENGINE_STATUS_LABELS: Record<EngineInitStatus, string> = {
-  idle: "Waiting to initialize the WASM runtime.",
-  "loading-runtime": "Loading the Go WebAssembly runtime.",
-  "fetching-wasm": "Fetching the WebAssembly binary.",
-  "instantiating-wasm": "Instantiating the WebAssembly module.",
-  "starting-go": "Starting the Go runtime and registering the engine.",
-  ready: "Ready.",
-  error: "Failed to initialize.",
+  idle: "Not loaded",
+  "loading-runtime": "Loading",
+  "fetching-wasm": "Loading",
+  "instantiating-wasm": "Loading",
+  "starting-go": "Loading",
+  ready: "Ready",
+  error: "Error",
 };
 
 export const ENGINE_OVERALL_STATUS_LABELS: Record<
   EngineOverallInitStatus,
   string
 > = {
-  idle: "Waiting to initialize engines.",
-  loading: "Loading engines...",
-  ready: "Both engines are ready.",
-  error: "One or more engines failed to initialize.",
+  idle: "Idle",
+  loading: "Loading…",
+  ready: "Ready",
+  error: "Engine error",
 };
 
 export function isInputFormat(value: unknown): value is InputFormat {

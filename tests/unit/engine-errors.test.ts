@@ -5,6 +5,7 @@ import {
   normalizeEngineError,
   toFriendlyEvaluationErrorMessage,
 } from "@/lib/engine-errors";
+import { VALIDATION_MESSAGES } from "@/lib/validation";
 
 test("maps parse failures to friendly expression errors", () => {
   assert.match(
@@ -80,36 +81,36 @@ test("normalizeEngineError wraps undefined as unknown", () => {
 // ── Edge cases: timeout message ────────────────────────────────────────
 
 test("maps execution timeout to friendly timeout message", () => {
-  assert.match(
+  assert.equal(
     toFriendlyEvaluationErrorMessage(
       "execution timed out after 8s",
       "yaml",
       "yq",
     ),
-    /timed out after 8s/i,
+    VALIDATION_MESSAGES.workerTimeout,
   );
 });
 
 // ── Edge cases: empty expression / input messages ──────────────────────
 
 test("maps expression-required error", () => {
-  assert.match(
+  assert.equal(
     toFriendlyEvaluationErrorMessage("expression is required", "yaml", "yq"),
-    /expression is required/i,
+    VALIDATION_MESSAGES.emptyExpression,
   );
 });
 
 test("maps selector-required error for dasel", () => {
-  assert.match(
+  assert.equal(
     toFriendlyEvaluationErrorMessage("selector is required", "yaml", "dasel"),
-    /selector is required/i,
+    VALIDATION_MESSAGES.emptyExpression,
   );
 });
 
 test("maps input-required error", () => {
-  assert.match(
+  assert.equal(
     toFriendlyEvaluationErrorMessage("input is required", "yaml", "yq"),
-    /input is required/i,
+    VALIDATION_MESSAGES.emptyInput,
   );
 });
 

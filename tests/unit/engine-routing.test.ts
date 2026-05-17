@@ -108,7 +108,7 @@ test.afterEach(() => {
 });
 
 test("evaluate() with engine='yq' routes to the yq worker", async () => {
-  await initEngine();
+  await initEngine("yq");
 
   const result = await evaluate("foo: bar\n", ".foo", "yaml", "yaml", "yq");
 
@@ -116,7 +116,7 @@ test("evaluate() with engine='yq' routes to the yq worker", async () => {
 });
 
 test("evaluate() with engine='dasel' routes to the dasel worker", async () => {
-  await initEngine();
+  await initEngine("dasel");
 
   const result = await evaluate(
     "foo: bar\n",
@@ -129,8 +129,8 @@ test("evaluate() with engine='dasel' routes to the dasel worker", async () => {
   assert.equal(result, "dasel:foo.bar");
 });
 
-test("both engines initialize before the first call completes", async () => {
-  await initEngine();
+test("both engines initialize when initEngine is called for each", async () => {
+  await Promise.all([initEngine("yq"), initEngine("dasel")]);
 
   const snapshot = getEngineInitSnapshot();
 
@@ -139,7 +139,7 @@ test("both engines initialize before the first call completes", async () => {
 });
 
 test("switching engines mid-session keeps routing stable", async () => {
-  await initEngine();
+  await Promise.all([initEngine("yq"), initEngine("dasel")]);
 
   const first = await evaluate("foo: bar\n", ".foo", "yaml", "yaml", "yq");
   const second = await evaluate(

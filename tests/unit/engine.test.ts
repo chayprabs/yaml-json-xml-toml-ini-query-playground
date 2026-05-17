@@ -248,7 +248,7 @@ test.afterEach(() => {
 });
 
 test("routes evaluate() to the selected engine worker", async () => {
-  await initEngine();
+  await Promise.all([initEngine("yq"), initEngine("dasel")]);
 
   const yqOutput = await evaluate("foo: bar\n", ".foo", "yaml", "yaml", "yq");
   const daselOutput = await evaluate(
@@ -283,40 +283,31 @@ test("routes evaluate() to the selected engine worker", async () => {
   );
 });
 
-test("initializes both engines in parallel before the combined init promise resolves", async () => {
+test("initializes each engine when initEngine is called per worker", async () => {
   workerBehaviors.yq.autoReady = false;
   workerBehaviors.dasel.autoReady = false;
 
-  let settled = false;
-  const initPromise = initEngine().then(() => {
-    settled = true;
-  });
-
+  const yqInit = initEngine("yq");
   await Promise.resolve();
-  await Promise.resolve();
-
-  assert.equal(workerInstances.length, 2);
-  assert.ok(
-    workerInstances.every((worker) =>
-      worker.postedMessages.some((message) => message.type === "init"),
-    ),
-  );
-  assert.equal(settled, false);
-
+  assert.equal(workerInstances.length, 1);
   workerInstances.find((worker) => worker.engine === "yq")?.emitReady();
-  await Promise.resolve();
-  assert.equal(settled, false);
+  await yqInit;
 
+  const daselInit = initEngine("dasel");
+  await Promise.resolve();
+  assert.equal(workerInstances.length, 2);
   workerInstances.find((worker) => worker.engine === "dasel")?.emitReady();
-  await initPromise;
-  assert.equal(settled, true);
+  await daselInit;
 });
 
 test("partial engine failure leaves yq usable when dasel fails to initialize", async () => {
   workerBehaviors.dasel.initError =
-    "Failed to load expression engine. Please refresh.";
+    "Engine failed to load. Please refresh the page.";
 
-  await initEngine();
+  await initEngine("yq");
+  await assert.rejects(async () => {
+    await initEngine("dasel");
+  });
 
   const snapshot = getEngineInitSnapshot();
   assert.equal(snapshot.engines.yq.status, "ready");
@@ -328,6 +319,6 @@ test("partial engine failure leaves yq usable when dasel fails to initialize", a
 
   await assert.rejects(
     () => evaluate("foo: bar\n", "foo", "yaml", "yaml", "dasel"),
-    /Failed to load expression engine|unavailable/i,
+    /Engine failed to load|unavailable/i,
   );
 });

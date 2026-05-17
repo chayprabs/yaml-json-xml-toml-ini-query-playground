@@ -143,11 +143,11 @@ async function ensureRuntimeScript(): Promise<void> {
   try {
     globalScope.importScripts(getAssetPath("wasm_exec.js"));
   } catch {
-    throw new Error("Failed to load the WebAssembly runtime. Please refresh.");
+    throw new Error("Engine failed to load. Please refresh the page.");
   }
 
   if (!globalScope.Go) {
-    throw new Error("Failed to load the WebAssembly runtime. Please refresh.");
+    throw new Error("Engine failed to load. Please refresh the page.");
   }
 }
 
@@ -168,7 +168,7 @@ async function instantiateModule(
       cache: "force-cache",
     });
     if (!rawResponse.ok) {
-      throw new Error("Failed to load expression engine. Please refresh.");
+      throw new Error("Engine failed to load. Please refresh the page.");
     }
 
     return rawResponse;
@@ -219,7 +219,7 @@ async function instantiateModule(
   try {
     response = (await fetchCompressedWasm()) ?? (await fetchRawWasm());
   } catch {
-    throw new Error("Failed to load expression engine. Please refresh.");
+    throw new Error("Engine failed to load. Please refresh the page.");
   }
 
   setInitStatus("instantiating-wasm");
@@ -242,9 +242,7 @@ async function instantiateModule(
     const fallbackResult = await WebAssembly.instantiate(buffer, importObject);
     return fallbackResult.instance;
   } catch {
-    throw new Error(
-      "Failed to start the expression engine. Your browser may not support this WebAssembly build.",
-    );
+    throw new Error("Engine failed to load. Please refresh the page.");
   }
 }
 
@@ -255,7 +253,7 @@ async function waitForEvaluator(
 
   while (!getEvaluator()) {
     if (performance.now() - startedAt > timeoutMs) {
-      throw new Error("Failed to start the expression engine. Please refresh.");
+      throw new Error("Engine failed to load. Please refresh the page.");
     }
 
     await new Promise<void>((resolve) => globalScope.setTimeout(resolve, 16));
@@ -293,7 +291,7 @@ async function initEngine(): Promise<void> {
       waitForEvaluator(),
       runPromise.then(() => {
         throw new Error(
-          "Failed to start the expression engine. Please refresh.",
+          "Engine failed to load. Please refresh the page.",
         );
       }),
     ]);

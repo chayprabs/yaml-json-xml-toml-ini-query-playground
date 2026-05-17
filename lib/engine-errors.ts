@@ -1,9 +1,11 @@
+import { sanitizeEngineErrorMessage } from "@/lib/errorDisplay";
 import {
   ENGINE_INPUT_FORMATS,
   ENGINE_OUTPUT_FORMATS,
   type EngineType,
   type InputFormat,
 } from "@/lib/engine-types";
+import { VALIDATION_MESSAGES } from "@/lib/validation";
 
 export function normalizeEngineError(error: unknown): Error {
   if (error instanceof Error) {
@@ -46,20 +48,22 @@ export function toFriendlyEvaluationErrorMessage(
     message.split(/\r?\n/u)[0]?.trim() ?? "Unknown engine error.";
   const normalized = firstLine.toLowerCase();
 
-  if (normalized.includes("execution timed out")) {
-    return "Evaluation timed out after 8s. Try a smaller input or a narrower query.";
+  if (
+    normalized.includes("timed out") ||
+    normalized.includes("execution timed out")
+  ) {
+    return VALIDATION_MESSAGES.workerTimeout;
   }
 
-  if (normalized.includes("expression is required")) {
-    return "Expression is required. Enter an expression before running.";
-  }
-
-  if (normalized.includes("selector is required")) {
-    return "Selector is required. Enter a selector before running.";
+  if (
+    normalized.includes("expression is required") ||
+    normalized.includes("selector is required")
+  ) {
+    return VALIDATION_MESSAGES.emptyExpression;
   }
 
   if (normalized.includes("input is required")) {
-    return "Input is required. Paste a document before running.";
+    return VALIDATION_MESSAGES.emptyInput;
   }
 
   if (normalized.includes("unsupported input format")) {
@@ -104,5 +108,5 @@ export function toFriendlyEvaluationErrorMessage(
     return `The ${inputFormat.toUpperCase()} input could not be parsed. ${firstLine}`;
   }
 
-  return firstLine;
+  return sanitizeEngineErrorMessage(firstLine);
 }

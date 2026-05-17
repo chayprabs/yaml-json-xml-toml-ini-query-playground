@@ -2,7 +2,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-import { Playground } from "@/components/Playground";
+import { PluckPlayground } from "@/components/PluckPlayground";
 
 type PlaygroundBoundaryProps = {
   children?: ReactNode;
@@ -46,14 +46,14 @@ class PlaygroundErrorBoundary extends Component<
       );
     }
 
-    return this.props.children ?? <Playground />;
+    return this.props.children ?? <PluckPlayground />;
   }
 }
 
 export function PlaygroundBoundary() {
   return (
     <PlaygroundErrorBoundary>
-      <Playground />
+      <PluckPlayground />
     </PlaygroundErrorBoundary>
   );
 }
