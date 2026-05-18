@@ -13,6 +13,7 @@ import {
   type InputFormat,
   type OutputFormat,
 } from "@/lib/engine-types";
+import { VALIDATION_MESSAGES } from "@/lib/validation";
 
 export type {
   EngineEvaluateOptions,
@@ -538,11 +539,7 @@ export async function evaluate(
         "The browser engine is restarting after a timed out evaluation.",
         { restart: true },
       );
-      reject(
-        new Error(
-          "Evaluation timed out after 8 seconds. The engine has been restarted.",
-        ),
-      );
+      reject(new Error(VALIDATION_MESSAGES.workerTimeout));
     }, EVALUATION_TIMEOUT_MS);
 
     state.pendingEvaluations.set(requestId, {

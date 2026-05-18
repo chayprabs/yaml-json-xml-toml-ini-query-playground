@@ -6,6 +6,7 @@ import {
   isOutputFormat,
 } from "@/lib/engine-types";
 import type { PlaygroundState } from "@/lib/playground-types";
+import { MAX_EXPRESSION_CHARS } from "@/lib/validation";
 
 export const HASH_SYNC_DELAY_MS = 300;
 export const MAX_SHAREABLE_HASH_LENGTH = 4_000;
@@ -63,7 +64,7 @@ function partialStateFromRecord(
   }
 
   if (typeof parsed.expression === "string") {
-    nextState.expression = parsed.expression;
+    nextState.expression = parsed.expression.slice(0, MAX_EXPRESSION_CHARS);
   }
 
   if (typeof parsed.input === "string") {
