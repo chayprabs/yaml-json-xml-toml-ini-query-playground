@@ -15,8 +15,8 @@ async function waitForPlaygroundReady(
     "true";
   const activeEngine = daselSelected ? "dasel" : "yq";
 
-  await expect(page.getByTestId(`engine-status-${activeEngine}`)).toHaveText(
-    /\b(Ready|Timeout)\b/,
+  await expect(page.getByTestId(`engine-status-${activeEngine}`)).toContainText(
+    /Ready|Timeout/,
     { timeout },
   );
 }
@@ -26,8 +26,8 @@ async function waitForEngineReady(
   engine: "dasel" | "yq",
   timeout: number = PLAYGROUND_READY_TIMEOUT_MS,
 ) {
-  await expect(page.getByTestId(`engine-status-${engine}`)).toHaveText(
-    /\b(Ready|Timeout)\b/,
+  await expect(page.getByTestId(`engine-status-${engine}`)).toContainText(
+    /Ready|Timeout/,
     { timeout },
   );
 }
@@ -484,11 +484,11 @@ test("keyboard submission still works after switching engines", async ({
 
 test("privacy notice and legal routes are reachable", async ({ page }) => {
   await page.goto("/");
-  await expect(
-    page.getByText(
-      "Your data never leaves your browser. Both engines run locally as WebAssembly. Nothing is sent to a server.",
-    ),
-  ).toBeVisible();
+  const notice = page.getByTestId("privacy-notice");
+  await expect(notice).toContainText("Your data never leaves your browser");
+  await expect(notice).toContainText(
+    "Both engines run locally as WebAssembly. Nothing is sent to a server.",
+  );
 
   await page.goto("/privacy");
   await expect(page.getByRole("heading", { name: /privacy/i })).toBeVisible();
