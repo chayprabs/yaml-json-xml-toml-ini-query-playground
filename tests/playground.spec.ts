@@ -16,7 +16,7 @@ async function waitForPlaygroundReady(
   const activeEngine = daselSelected ? "dasel" : "yq";
 
   await expect(page.getByTestId(`engine-status-${activeEngine}`)).toContainText(
-    /Ready|Timeout/,
+    /Ready|Timeout|Error/,
     { timeout },
   );
 }
@@ -27,7 +27,7 @@ async function waitForEngineReady(
   timeout: number = PLAYGROUND_READY_TIMEOUT_MS,
 ) {
   await expect(page.getByTestId(`engine-status-${engine}`)).toContainText(
-    /Ready|Timeout/,
+    /Ready|Timeout|Error/,
     { timeout },
   );
 }
@@ -330,6 +330,7 @@ test("recovers from Go panics for both engines without requiring a page reload",
   await expect(page.getByTestId("error-box")).toContainText(
     "An internal error occurred",
   );
+  await expect(page.getByTestId("engine-status-yq")).toContainText("Error");
 
   await setEngine(page, "dasel");
   await page.getByTestId("input-editor").fill("[server]\nhttp_port = 9999\n");
@@ -340,6 +341,7 @@ test("recovers from Go panics for both engines without requiring a page reload",
   await expect(page.getByTestId("error-box")).toContainText(
     "An internal error occurred",
   );
+  await expect(page.getByTestId("engine-status-dasel")).toContainText("Error");
 
   await page.getByTestId("run-button").click();
   await expect(page.getByTestId("output-content")).toContainText("9999");
@@ -480,6 +482,21 @@ test("keyboard submission still works after switching engines", async ({
       timeout: PLAYGROUND_READY_TIMEOUT_MS,
     })
     .toContain("9999");
+});
+
+test("copy link encodes the current workspace in the URL hash", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForPlaygroundReady(page);
+
+  await page.getByTestId("expression-input").fill(".metadata.labels");
+  await page.getByTestId("copy-link-button").click();
+
+  await expect(page.getByTestId("copy-link-button")).toContainText(
+    "Link copied",
+  );
+  await expect(page).toHaveURL(/#state=/u);
 });
 
 test("privacy notice and legal routes are reachable", async ({ page }) => {

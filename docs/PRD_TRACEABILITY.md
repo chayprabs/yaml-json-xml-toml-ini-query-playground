@@ -15,13 +15,13 @@ Maps the Product Requirements Document to this repository. **Status:** Implement
 | 8.2 | Expression bar, auto-run 600ms, Run, shortcut | Implemented | `PluckPlayground.tsx`, [`../lib/playground-state.ts`](../lib/playground-state.ts) |
 | 8.3 | Engine controls collapsible, placeholders | Implemented | `PluckPlayground.tsx` `<details>` |
 | 8.4 | Output, 50k truncate, copy/download, errors, Running… | Implemented | [`../lib/output.ts`](../lib/output.ts), [`../lib/errorDisplay.ts`](../lib/errorDisplay.ts) |
-| 8.5 | Status badges: Loading, Ready, Running, Error, **Timeout** | Implemented | [`../lib/engine-types.ts`](../lib/engine-types.ts), timeout latch + badge copy in `PluckPlayground.tsx` |
+| 8.5 | Status badges: Loading, Ready, Running, Error, Timeout | Implemented | `engineEvalBadge` + init errors in `PluckPlayground.tsx` |
 | 8.6 | Syntax hints + doc links | Implemented | [`../lib/playground-state.ts`](../lib/playground-state.ts) `ENGINE_SYNTAX_HINTS` |
 | 8.7 | Nine presets | Implemented | [`../lib/examples.ts`](../lib/examples.ts), Playwright |
 | 8.8 | Clear: empty input/expression/output, keep engine/formats | Implemented | `clearPlayground` in `PluckPlayground.tsx` |
 | 9 | User flow / validation before worker | Implemented | `validateRunRequest`, `runGate` |
 | 10 | Validation messages (exact copy) | Implemented | [`../lib/validation.ts`](../lib/validation.ts) `VALIDATION_MESSAGES` |
-| 11 | URL hash, LZ, 4000 guard, restore state | Implemented | [`../lib/urlState.ts`](../lib/urlState.ts), expression clamp in decode |
+| 11 | URL hash, LZ, 4000 guard, restore state, copy link | Implemented | [`../lib/urlState.ts`](../lib/urlState.ts), `copy-link-button` in `PluckPlayground.tsx` |
 | 12 | CSP, sanitisation, XSS, WASM isolation | Implemented | [`../app/layout.tsx`](../app/layout.tsx), [`../public/_headers`](../public/_headers), `OutputSyntax` |
 | 13 | Limits table | Implemented | [`../lib/validation.ts`](../lib/validation.ts), [`../lib/playground-state.ts`](../lib/playground-state.ts), [`../lib/urlState.ts`](../lib/urlState.ts) |
 | 14.1 | Cache headers incl. worker scripts | Implemented | [`../public/_headers`](../public/_headers) `/yq-worker.js`, `/dasel-worker.js` |

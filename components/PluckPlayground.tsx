@@ -71,7 +71,7 @@ type QueuedRun = {
   snapshot: RunSnapshot;
 };
 
-type EngineEvalBadge = "idle" | "timeout";
+type EngineEvalBadge = "idle" | "timeout" | "error";
 
 function engineBadgeText(
   engine: EngineType,
@@ -89,11 +89,32 @@ function engineBadgeText(
     return meta.error.length > 90 ? `${meta.error.slice(0, 87)}…` : meta.error;
   }
 
-  if (meta.status === "ready" && engineEvalBadge[engine] === "timeout") {
-    return "Timeout";
+  if (meta.status === "ready") {
+    if (engineEvalBadge[engine] === "timeout") {
+      return "Timeout";
+    }
+    if (engineEvalBadge[engine] === "error") {
+      return "Error";
+    }
   }
 
   return ENGINE_STATUS_LABELS[meta.status];
+}
+
+function syncShareableUrlNow(state: PlaygroundState): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const nextHash = encodeHashState(state);
+
+  if (nextHash.length > MAX_SHAREABLE_HASH_LENGTH) {
+    return null;
+  }
+
+  const nextUrl = `${window.location.pathname}${window.location.search}#${nextHash}`;
+  window.history.replaceState(null, "", nextUrl);
+  return window.location.href;
 }
 
 function ToggleOption({
@@ -256,6 +277,7 @@ function engineDescription(engine: EngineType): string {
 export function PluckPlayground() {
   const [settings, setSettings] = useState<PlaygroundState>(createDefaultState);
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [linkCopyState, setLinkCopyState] = useState<CopyState>("idle");
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [engineSnapshot, setEngineSnapshot] = useState<EngineInitSnapshot>(
     getEngineInitSnapshot,
@@ -365,6 +387,7 @@ export function PluckPlayground() {
           setDurationMs(performance.now() - startedAt);
           setError(null);
           setOutput(result);
+          syncShareableUrlNow(settingsRef.current);
         });
       } catch (evaluationError: unknown) {
         if (
@@ -385,7 +408,7 @@ export function PluckPlayground() {
           setEngineEvalBadge((previous) =>
             isTimeout
               ? { ...previous, [snapshot.engine]: "timeout" }
-              : previous,
+              : { ...previous, [snapshot.engine]: "error" },
           );
           setError(
             isTimeout ? rawMessage : sanitizeEngineErrorMessage(rawMessage),
@@ -617,6 +640,20 @@ export function PluckPlayground() {
     };
   }, [copyState]);
 
+  useEffect(() => {
+    if (linkCopyState === "idle") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLinkCopyState("idle");
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [linkCopyState]);
+
   useLayoutEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputScrollTopRef.current;
@@ -711,6 +748,50 @@ export function PluckPlayground() {
       expression: "",
       input: "",
     });
+  }
+
+  async function copyShareLink() {
+    const state = settingsRef.current;
+    const nextHash = encodeHashState(state);
+
+    if (nextHash.length > MAX_SHAREABLE_HASH_LENGTH) {
+      setShareWarning(VALIDATION_MESSAGES.urlTooLarge);
+      return;
+    }
+
+    const href = syncShareableUrlNow(state);
+    if (!href) {
+      setShareWarning(VALIDATION_MESSAGES.urlTooLarge);
+      return;
+    }
+
+    setShareWarning(null);
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(href);
+        setLinkCopyState("copied");
+        return;
+      }
+    } catch {
+      // Fall through to the legacy copy path below.
+    }
+
+    try {
+      const helper = document.createElement("textarea");
+      helper.value = href;
+      helper.setAttribute("readonly", "true");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      helper.style.pointerEvents = "none";
+      document.body.appendChild(helper);
+      helper.select();
+      const didCopy = document.execCommand("copy");
+      document.body.removeChild(helper);
+      setLinkCopyState(didCopy ? "copied" : "failed");
+    } catch {
+      setLinkCopyState("failed");
+    }
   }
 
   async function copyOutput() {
@@ -1204,13 +1285,27 @@ export function PluckPlayground() {
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <label className="grid gap-2">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.28em] text-ink/55">
                 Input document
               </span>
-              <span className="text-xs text-ink/55">
-                Shared in the URL hash for bookmarking
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-ink/55">
+                  Shared in the URL hash for bookmarking
+                </span>
+                <button
+                  type="button"
+                  data-testid="copy-link-button"
+                  className="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs font-semibold text-ink transition hover:border-ember/35 hover:bg-rose/60"
+                  onClick={() => void copyShareLink()}
+                >
+                  {linkCopyState === "copied"
+                    ? "Link copied"
+                    : linkCopyState === "failed"
+                      ? "Copy failed"
+                      : "Copy link"}
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink/60">
               <span data-testid="input-counter">
@@ -1240,6 +1335,15 @@ export function PluckPlayground() {
               }
               spellCheck={false}
             />
+            {shareWarning ? (
+              <div
+                data-testid="share-warning"
+                role="status"
+                className="rounded-[1.3rem] border border-brass/35 bg-brass/10 px-4 py-3 text-sm leading-6 text-ink"
+              >
+                {shareWarning}
+              </div>
+            ) : null}
           </label>
 
           <div className="grid gap-2">
@@ -1293,15 +1397,6 @@ export function PluckPlayground() {
               truncated={preparedOutput.truncated}
             />
 
-            {shareWarning ? (
-              <div
-                data-testid="share-warning"
-                role="status"
-                className="rounded-[1.3rem] border border-brass/35 bg-brass/10 px-4 py-3 text-sm leading-6 text-ink"
-              >
-                {shareWarning}
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
