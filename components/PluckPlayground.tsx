@@ -71,6 +71,31 @@ type QueuedRun = {
   snapshot: RunSnapshot;
 };
 
+type EngineEvalBadge = "idle" | "timeout";
+
+function engineBadgeText(
+  engine: EngineType,
+  settings: PlaygroundState,
+  engineSnapshot: EngineInitSnapshot,
+  isRunning: boolean,
+  engineEvalBadge: Record<EngineType, EngineEvalBadge>,
+): string {
+  const meta = engineSnapshot.engines[engine];
+  if (isRunning && settings.engine === engine) {
+    return VALIDATION_MESSAGES.running;
+  }
+
+  if (meta.status === "error" && meta.error) {
+    return meta.error.length > 90 ? `${meta.error.slice(0, 87)}…` : meta.error;
+  }
+
+  if (meta.status === "ready" && engineEvalBadge[engine] === "timeout") {
+    return "Timeout";
+  }
+
+  return ENGINE_STATUS_LABELS[meta.status];
+}
+
 function ToggleOption({
   checked,
   description,
@@ -241,7 +266,11 @@ export function PluckPlayground() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [output, setOutput] = useState<string>("");
   const [shareWarning, setShareWarning] = useState<string | null>(null);
+  const [engineEvalBadge, setEngineEvalBadge] = useState<
+    Record<EngineType, EngineEvalBadge>
+  >({ yq: "idle", dasel: "idle" });
 
+  const validationMessageRef = useRef<HTMLParagraphElement | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
   const outputScrollTopRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(false);
@@ -303,6 +332,10 @@ export function PluckPlayground() {
       isRunningRef.current = true;
       setIsRunning(true);
       setError(null);
+      setEngineEvalBadge((previous) => ({
+        ...previous,
+        [snapshot.engine]: "idle",
+      }));
 
       const startedAt = performance.now();
 
@@ -325,6 +358,10 @@ export function PluckPlayground() {
         }
 
         startTransition(() => {
+          setEngineEvalBadge((previous) => ({
+            ...previous,
+            [snapshot.engine]: "idle",
+          }));
           setDurationMs(performance.now() - startedAt);
           setError(null);
           setOutput(result);
@@ -344,10 +381,14 @@ export function PluckPlayground() {
             evaluationError instanceof Error
               ? evaluationError.message
               : "Evaluation failed with an unknown error.";
+          const isTimeout = rawMessage === VALIDATION_MESSAGES.workerTimeout;
+          setEngineEvalBadge((previous) =>
+            isTimeout
+              ? { ...previous, [snapshot.engine]: "timeout" }
+              : previous,
+          );
           setError(
-            rawMessage === VALIDATION_MESSAGES.workerTimeout
-              ? rawMessage
-              : sanitizeEngineErrorMessage(rawMessage),
+            isTimeout ? rawMessage : sanitizeEngineErrorMessage(rawMessage),
           );
         });
       } finally {
@@ -610,6 +651,7 @@ export function PluckPlayground() {
     });
 
     setSettings(nextState);
+    setEngineEvalBadge({ yq: "idle", dasel: "idle" });
     setError(null);
     setDurationMs(null);
     setOutput("");
@@ -664,6 +706,7 @@ export function PluckPlayground() {
     setDurationMs(null);
     setError(null);
     setOutput("");
+    setEngineEvalBadge({ yq: "idle", dasel: "idle" });
     updateSettings({
       expression: "",
       input: "",
@@ -722,15 +765,18 @@ export function PluckPlayground() {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
       const snapshot = createRunSnapshot(settingsRef.current);
-      if (
-        !validateRunRequest(
-          snapshot.engine,
-          snapshot.input,
-          snapshot.expression,
-          snapshot.inputFormat,
-          snapshot.outputFormat,
-        ).ok
-      ) {
+      const gate = validateRunRequest(
+        snapshot.engine,
+        snapshot.input,
+        snapshot.expression,
+        snapshot.inputFormat,
+        snapshot.outputFormat,
+      );
+      if (!gate.ok) {
+        validationMessageRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
         return;
       }
 
@@ -893,6 +939,7 @@ export function PluckPlayground() {
               </p>
               {!runGate.ok ? (
                 <p
+                  ref={validationMessageRef}
                   data-testid="validation-message"
                   className="text-xs leading-5 text-danger"
                 >
@@ -1002,9 +1049,13 @@ export function PluckPlayground() {
                 <span className="font-semibold text-ink">
                   {ENGINE_DISPLAY_NAMES[engine]}:
                 </span>{" "}
-                {isRunning && settings.engine === engine
-                  ? VALIDATION_MESSAGES.running
-                  : ENGINE_STATUS_LABELS[engineSnapshot.engines[engine].status]}
+                {engineBadgeText(
+                  engine,
+                  settings,
+                  engineSnapshot,
+                  isRunning,
+                  engineEvalBadge,
+                )}
               </div>
             ))}
 
