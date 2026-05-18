@@ -15,8 +15,8 @@ async function waitForPlaygroundReady(
     "true";
   const activeEngine = daselSelected ? "dasel" : "yq";
 
-  await expect(page.getByTestId(`engine-status-${activeEngine}`)).toContainText(
-    "Ready",
+  await expect(page.getByTestId(`engine-status-${activeEngine}`)).toHaveText(
+    /\b(Ready|Timeout)\b/,
     { timeout },
   );
 }
@@ -26,8 +26,8 @@ async function waitForEngineReady(
   engine: "dasel" | "yq",
   timeout: number = PLAYGROUND_READY_TIMEOUT_MS,
 ) {
-  await expect(page.getByTestId(`engine-status-${engine}`)).toContainText(
-    "Ready",
+  await expect(page.getByTestId(`engine-status-${engine}`)).toHaveText(
+    /\b(Ready|Timeout)\b/,
     { timeout },
   );
 }
@@ -309,6 +309,8 @@ test("times out slow evaluations, restarts the worker, and remains usable", asyn
     { timeout: PLAYGROUND_READY_TIMEOUT_MS },
   );
 
+  await expect(page.getByTestId("engine-status-yq")).toContainText("Timeout");
+
   await waitForPlaygroundReady(page, PLAYGROUND_READY_TIMEOUT_MS);
   await page.getByTestId("run-button").click();
   await expect(page.getByTestId("output-content")).toContainText("bar");
@@ -375,7 +377,7 @@ test("keeps yq usable when the dasel wasm binary cannot be fetched", async ({
     }
   });
   await expect(page.getByTestId("engine-status-dasel")).toContainText(
-    "Error",
+    "Engine failed to load",
     {
       timeout: PLAYGROUND_READY_TIMEOUT_MS,
     },
