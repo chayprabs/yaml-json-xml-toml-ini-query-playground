@@ -12,6 +12,10 @@ export default function TermsPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-ink">
           Terms of service
         </h1>
+        <p className="mt-2 text-sm text-ink/65">
+          Terms of use — same policy as below; “Terms of service” and “Terms
+          of use” refer to this page.
+        </p>
         <div className="mt-8 space-y-6 text-sm leading-7 text-ink/80">
           <section>
             <h2 className="text-lg font-semibold text-ink">Use at your own risk</h2>

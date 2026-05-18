@@ -57,8 +57,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-ink">Contact</h2>
             <p className="mt-2">
-              For questions about this privacy notice, contact the project
-              maintainer via the{" "}
+              For questions about this privacy notice, contact the maintainer via
+              the{" "}
               <a
                 className="font-semibold text-ember underline underline-offset-2"
                 href="https://github.com/chayprabs"
@@ -66,11 +66,27 @@ export default function PrivacyPage() {
                 target="_blank"
               >
                 GitHub profile
-              </a>{" "}
-              linked from the repository.
+              </a>
+              , open an issue on the{" "}
+              <a
+                className="font-semibold text-ember underline underline-offset-2"
+                href="https://github.com/chayprabs/yaml-json-xml-toml-ini-query-playground/issues"
+                rel="noreferrer"
+                target="_blank"
+              >
+                project repository
+              </a>
+              , or email{" "}
+              <a
+                className="font-semibold text-ember underline underline-offset-2"
+                href="mailto:support@authos.app"
+              >
+                support@authos.app
+              </a>
+              .
             </p>
           </section>
-          <p className="text-xs text-ink/55">Last updated: May 17, 2026</p>
+          <p className="text-xs text-ink/55">Last updated: May 18, 2026</p>
         </div>
         <p className="mt-8 text-sm">
           <Link className="text-ember underline underline-offset-2" href="/">

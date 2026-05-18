@@ -67,15 +67,27 @@ export default function Home() {
 
       <footer className="space-y-3 pb-6 text-center text-sm text-ink/70">
         <p data-testid="privacy-notice">
-          Your data never leaves your browser. Both engines run locally as
-          WebAssembly. Nothing is sent to a server.
+          <strong className="font-semibold text-ink">
+            Your data never leaves your browser.
+          </strong>{" "}
+          Both engines run locally as WebAssembly. Nothing is sent to a server.
+        </p>
+        <p className="text-xs leading-5 text-ink/55">
+          Pluck is provided as-is for local, in-browser use. It is not legal or
+          compliance advice; see Terms of use for limitations of liability.
         </p>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-ink/55">
+          <span className="w-full text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/40 sm:w-auto">
+            Legal
+          </span>
           <Link className="transition hover:text-ember" href="/privacy">
-            Privacy
+            Privacy policy
           </Link>
           <Link className="transition hover:text-ember" href="/terms">
-            Terms
+            Terms of service
+          </Link>
+          <Link className="transition hover:text-ember" href="/terms">
+            Terms of use
           </Link>
           <Link className="transition hover:text-ember" href="/credits">
             Credits
