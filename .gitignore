@@ -12,3 +12,6 @@ public/engine-yq.wasm.gz
 public/engine-dasel.wasm
 public/engine-dasel.wasm.gz
 public/wasm_exec.js
+
+# Local PRD / exports (do not commit)
+yaml-json-xml-toml-ini-query-playground.pdf
