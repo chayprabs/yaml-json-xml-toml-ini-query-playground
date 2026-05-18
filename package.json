@@ -14,6 +14,7 @@
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "playwright test",
+    "test:headed": "playwright test --headed",
     "test:unit": "tsx --test tests/unit/*.test.ts",
     "test:e2e": "npm run build:engine && playwright test",
     "test:go": "node scripts/test-go.cjs"
