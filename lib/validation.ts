@@ -42,7 +42,25 @@ export const VALIDATION_MESSAGES = {
   running: "Running…",
   urlTooLarge:
     "Workspace is too large to encode in a URL. Download your input to save it.",
+  daselFileVariable:
+    "Browser mode cannot load file: variables. Paste JSON/YAML inline instead.",
 } as const;
+
+export function truncateInputToMaxBytes(input: string): {
+  text: string;
+  truncated: boolean;
+} {
+  if (!isInputOverHardLimit(input)) {
+    return { text: input, truncated: false };
+  }
+
+  let end = input.length;
+  while (end > 0 && getInputByteSize(input.slice(0, end)) > MAX_INPUT_BYTES) {
+    end -= 1;
+  }
+
+  return { text: input.slice(0, end), truncated: end < input.length };
+}
 
 export function getInputByteSize(input: string): number {
   return new TextEncoder().encode(input).length;
@@ -105,20 +123,20 @@ export function validateRunRequest(
   inputFormat: InputFormat,
   outputFormat: OutputFormat,
 ): RunValidation {
-  if (isInputOverHardLimit(input)) {
-    return { ok: false, message: VALIDATION_MESSAGES.inputTooLarge };
-  }
-
-  if (input.trim().length === 0) {
-    return { ok: false, message: VALIDATION_MESSAGES.emptyInput };
-  }
-
   if (expression.trim().length === 0) {
     return { ok: false, message: VALIDATION_MESSAGES.emptyExpression };
   }
 
   if (expression.length > MAX_EXPRESSION_CHARS) {
     return { ok: false, message: VALIDATION_MESSAGES.expressionTooLong };
+  }
+
+  if (input.trim().length === 0) {
+    return { ok: false, message: VALIDATION_MESSAGES.emptyInput };
+  }
+
+  if (isInputOverHardLimit(input)) {
+    return { ok: false, message: VALIDATION_MESSAGES.inputTooLarge };
   }
 
   if (!supportsInputFormat(engine, inputFormat)) {

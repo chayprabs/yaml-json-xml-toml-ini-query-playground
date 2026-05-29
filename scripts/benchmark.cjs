@@ -44,9 +44,14 @@ async function main() {
     );
 
     const loadMetrics = await throttledPage.evaluate(async () => {
-      const readyMark = performance
-        .getEntriesByName("engine:init:ready", "mark")
-        .at(-1);
+      const readyMarks = ["yq", "dasel"]
+        .map((engine) =>
+          performance
+            .getEntriesByName(`engine:init:${engine}:ready`, "mark")
+            .at(-1),
+        )
+        .filter(Boolean);
+      const readyMark = readyMarks.at(-1);
       const placeholderText =
         "Run an expression to see the transformed output here.";
 

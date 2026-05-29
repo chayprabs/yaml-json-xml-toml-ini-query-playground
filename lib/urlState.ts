@@ -8,8 +8,7 @@ import {
 import type { PlaygroundState } from "@/lib/playground-types";
 import {
   MAX_EXPRESSION_CHARS,
-  MAX_INPUT_BYTES,
-  getInputByteSize,
+  truncateInputToMaxBytes,
 } from "@/lib/validation";
 
 export const HASH_SYNC_DELAY_MS = 300;
