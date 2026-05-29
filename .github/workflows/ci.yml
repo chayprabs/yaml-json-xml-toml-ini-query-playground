@@ -37,6 +37,9 @@ jobs:
       - name: TypeScript type check
         run: npm run typecheck
 
+      - name: Go unit tests
+        run: npm run test:go
+
       - name: Unit tests
         run: npm run test:unit
 

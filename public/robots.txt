@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yaml-json-xml-toml-ini-query-playground.pages.dev/sitemap.xml

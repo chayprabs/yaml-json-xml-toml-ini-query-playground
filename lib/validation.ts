@@ -105,20 +105,20 @@ export function validateRunRequest(
   inputFormat: InputFormat,
   outputFormat: OutputFormat,
 ): RunValidation {
-  if (expression.trim().length === 0) {
-    return { ok: false, message: VALIDATION_MESSAGES.emptyExpression };
-  }
-
-  if (expression.length > MAX_EXPRESSION_CHARS) {
-    return { ok: false, message: VALIDATION_MESSAGES.expressionTooLong };
+  if (isInputOverHardLimit(input)) {
+    return { ok: false, message: VALIDATION_MESSAGES.inputTooLarge };
   }
 
   if (input.trim().length === 0) {
     return { ok: false, message: VALIDATION_MESSAGES.emptyInput };
   }
 
-  if (isInputOverHardLimit(input)) {
-    return { ok: false, message: VALIDATION_MESSAGES.inputTooLarge };
+  if (expression.trim().length === 0) {
+    return { ok: false, message: VALIDATION_MESSAGES.emptyExpression };
+  }
+
+  if (expression.length > MAX_EXPRESSION_CHARS) {
+    return { ok: false, message: VALIDATION_MESSAGES.expressionTooLong };
   }
 
   if (!supportsInputFormat(engine, inputFormat)) {

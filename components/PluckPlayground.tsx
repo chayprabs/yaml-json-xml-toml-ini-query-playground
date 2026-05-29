@@ -444,18 +444,28 @@ export function PluckPlayground() {
       const selectedEngineState =
         engineSnapshotRef.current.engines[snapshot.engine];
 
-      if (selectedEngineState.status !== "ready") {
-        if (selectedEngineState.status === "error") {
+      if (selectedEngineState.status === "error") {
+        try {
+          await initEngine(snapshot.engine);
+        } catch (initFailure: unknown) {
           setError(
-            selectedEngineState.error ??
-              getEngineInitError(snapshot.engine) ??
-              `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
+            initFailure instanceof Error
+              ? initFailure.message
+              : (selectedEngineState.error ??
+                  getEngineInitError(snapshot.engine) ??
+                  `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`),
           );
           return;
         }
+      }
 
+      const refreshedState = engineSnapshotRef.current.engines[snapshot.engine];
+      if (refreshedState.status !== "ready") {
         setError(
-          `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
+          refreshedState.status === "error"
+            ? (refreshedState.error ??
+                `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`)
+            : `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
         );
         return;
       }

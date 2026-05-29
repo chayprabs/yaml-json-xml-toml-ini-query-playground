@@ -6,7 +6,11 @@ import {
   isOutputFormat,
 } from "@/lib/engine-types";
 import type { PlaygroundState } from "@/lib/playground-types";
-import { MAX_EXPRESSION_CHARS } from "@/lib/validation";
+import {
+  MAX_EXPRESSION_CHARS,
+  MAX_INPUT_BYTES,
+  getInputByteSize,
+} from "@/lib/validation";
 
 export const HASH_SYNC_DELAY_MS = 300;
 export const MAX_SHAREABLE_HASH_LENGTH = 4_000;

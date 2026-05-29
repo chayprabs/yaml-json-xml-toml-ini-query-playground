@@ -12,45 +12,24 @@
 
 html {
   min-height: 100%;
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(198, 93, 46, 0.14),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(36, 92, 74, 0.14),
-      transparent 34%
-    ),
-    #f6f0e3;
+  background: #fafafa;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  color: #17141f;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(246, 240, 227, 0.96),
-      rgba(252, 249, 242, 0.98)
-    ),
-    #f6f0e3;
+  color: #171717;
+  background: #fafafa;
 }
 
 ::selection {
-  color: #17141f;
-  background: rgba(184, 150, 59, 0.3);
-}
-
-.panel-grid {
-  background-size: 24px 24px;
+  color: #171717;
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .hljs {
   background: transparent;
-  color: #f8f2e8;
+  color: #e5e7eb;
 }
 
 .hljs-attr,
@@ -58,21 +37,21 @@ body {
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-title {
-  color: #f6bf76;
+  color: #93c5fd;
 }
 
 .hljs-string,
 .hljs-template-variable {
-  color: #d0f2d2;
+  color: #86efac;
 }
 
 .hljs-number,
 .hljs-literal,
 .hljs-symbol {
-  color: #9bd6ff;
+  color: #fcd34d;
 }
 
 .hljs-comment,
 .hljs-quote {
-  color: rgba(248, 242, 232, 0.5);
+  color: rgba(229, 231, 235, 0.55);
 }
