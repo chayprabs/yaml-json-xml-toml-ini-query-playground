@@ -14,14 +14,19 @@ const mono = IBM_Plex_Mono({
   variable: "--font-mono",
 });
 
+const siteDescription =
+  "Paste YAML, JSON, XML, CSV, TOML, INI, or HCL and run yq or dasel queries in your browser. No upload, no signup — WebAssembly only.";
+
 export const metadata: Metadata = {
-  title: "Pluck",
-  description:
-    "A browser-native config query playground. Paste YAML, JSON, XML, CSV, TOML, or INI and run expressions or selectors, fully client-side with WebAssembly.",
+  metadataBase: new URL(
+    "https://yaml-json-xml-toml-ini-query-playground.pages.dev",
+  ),
+  title: "Pluck — browser config query playground",
+  description: siteDescription,
   openGraph: {
     title: "Pluck",
-    description:
-      "A browser-native config query playground. Paste YAML, JSON, XML, CSV, TOML, or INI and run expressions or selectors, fully client-side with WebAssembly.",
+    description: siteDescription,
+    type: "website",
   },
 };
 

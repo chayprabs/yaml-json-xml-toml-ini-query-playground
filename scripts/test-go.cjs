@@ -55,8 +55,6 @@ function main() {
     .map(quoteExecPart)
     .join(" ");
 
-  setupWasmExec();
-
   const hostStatus = runNodeCommand("Host Go tests", [
     path.join(__dirname, "run-go.cjs"),
     "test",

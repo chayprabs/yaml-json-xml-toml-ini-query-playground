@@ -512,7 +512,7 @@ test("privacy notice and legal routes are reachable", async ({ page }) => {
 
   await page.goto("/terms");
   await expect(
-    page.getByRole("heading", { name: /terms of service/i }),
+    page.getByRole("heading", { name: /terms and conditions/i }),
   ).toBeVisible();
 
   await page.goto("/credits");

@@ -2,6 +2,11 @@
   "name": "yaml-json-xml-toml-ini-query-playground",
   "version": "0.1.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chayprabs/yaml-json-xml-toml-ini-query-playground.git"
+  },
+  "homepage": "https://github.com/chayprabs/yaml-json-xml-toml-ini-query-playground",
   "scripts": {
     "dev": "next dev",
     "build": "npm run build:engine && next build",

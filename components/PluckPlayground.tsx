@@ -444,28 +444,18 @@ export function PluckPlayground() {
       const selectedEngineState =
         engineSnapshotRef.current.engines[snapshot.engine];
 
-      if (selectedEngineState.status === "error") {
-        try {
-          await initEngine(snapshot.engine);
-        } catch (initFailure: unknown) {
+      if (selectedEngineState.status !== "ready") {
+        if (selectedEngineState.status === "error") {
           setError(
-            initFailure instanceof Error
-              ? initFailure.message
-              : (selectedEngineState.error ??
-                  getEngineInitError(snapshot.engine) ??
-                  `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`),
+            selectedEngineState.error ??
+              getEngineInitError(snapshot.engine) ??
+              `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
           );
           return;
         }
-      }
 
-      const refreshedState = engineSnapshotRef.current.engines[snapshot.engine];
-      if (refreshedState.status !== "ready") {
         setError(
-          refreshedState.status === "error"
-            ? (refreshedState.error ??
-                `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`)
-            : `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
+          `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
         );
         return;
       }
@@ -868,6 +858,19 @@ export function PluckPlayground() {
           behavior: "smooth",
           block: "nearest",
         });
+        return;
+      }
+
+      if (engineSnapshotRef.current.engines[snapshot.engine].status !== "ready") {
+        void initEngine(snapshot.engine)
+          .then(() => requestRun(snapshot))
+          .catch((initFailure: unknown) => {
+            setError(
+              initFailure instanceof Error
+                ? initFailure.message
+                : "The engine is still loading. Please try again.",
+            );
+          });
         return;
       }
 

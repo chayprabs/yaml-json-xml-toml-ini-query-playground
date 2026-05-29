@@ -51,8 +51,23 @@ function setupWasmExec() {
     );
   }
 
-  mkdirSync(path.dirname(destinationPath), { recursive: true });
-  copyFileSync(sourcePath, destinationPath);
+  try {
+    mkdirSync(path.dirname(destinationPath), { recursive: true });
+    copyFileSync(sourcePath, destinationPath);
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? error.code
+        : undefined;
+    if (code !== "EACCES" && code !== "EPERM") {
+      throw error;
+    }
+
+    if (!existsSync(destinationPath)) {
+      throw error;
+    }
+  }
+
   return destinationPath;
 }
 
