@@ -227,6 +227,27 @@ export function parseVariableMap(variableText: string): Record<string, string> {
   return result;
 }
 
+export function validateDaselConfiguration(
+  readFlagsText: string,
+  writeFlagsText: string,
+  variablesText: string,
+): { ok: true } | { ok: false; message: string } {
+  try {
+    parseFlagMap(readFlagsText);
+    parseFlagMap(writeFlagsText);
+    parseVariableMap(variablesText);
+    return { ok: true };
+  } catch (configurationError: unknown) {
+    return {
+      ok: false,
+      message:
+        configurationError instanceof Error
+          ? configurationError.message
+          : "Invalid selector engine configuration.",
+    };
+  }
+}
+
 export function createEngineEvaluateOptions(
   snapshot: RunSnapshot,
 ): EngineEvaluateOptions {

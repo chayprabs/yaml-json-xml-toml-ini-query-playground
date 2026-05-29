@@ -9,31 +9,44 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
   type MutableRefObject,
 } from "react";
 
+import { InputSyntax } from "@/components/InputSyntax";
 import { OutputSyntax } from "@/components/OutputSyntax";
+import { buildCliCommand } from "@/lib/cli-command";
+import { downloadTextFile } from "@/lib/download";
 import {
   evaluate,
   getEngineInitError,
   getEngineInitSnapshot,
   initEngine,
+  preloadAllEngines,
+  retryEngineInit,
   subscribeToEngineInit,
   type EngineInitSnapshot,
   type EngineType,
   type InputFormat,
   type OutputFormat,
 } from "@/lib/engine";
+import { ENGINE_VERSIONS } from "@/lib/engine-versions";
 import { sanitizeEngineErrorMessage } from "@/lib/errorDisplay";
+import { detectInputFormat } from "@/lib/format-detect";
 import {
   ENGINE_DISPLAY_NAMES,
   ENGINE_INPUT_FORMATS,
   ENGINE_OUTPUT_FORMATS,
   ENGINE_OVERALL_STATUS_LABELS,
   ENGINE_STATUS_LABELS,
+  supportsInputFormat,
 } from "@/lib/engine-types";
-import { prepareOutput } from "@/lib/output";
+import {
+  OUTPUT_HIGHLIGHT_THRESHOLD,
+  prepareOutput,
+} from "@/lib/output";
 import {
   AUTO_RUN_DELAY_MS,
   ENGINE_PLACEHOLDERS,
@@ -52,13 +65,16 @@ import {
   supportsNoDoc,
   supportsPrettyPrint,
   supportsUnwrapScalar,
+  validateDaselConfiguration,
   type Example,
   type PlaygroundState,
   type RunSnapshot,
 } from "@/lib/playground-state";
 import {
   getInputByteSize,
+  isInputOverHardLimit,
   MAX_EXPRESSION_CHARS,
+  MAX_INPUT_BYTES,
   shouldWarnLargeInput,
   validateRunRequest,
   VALIDATION_MESSAGES,
@@ -212,10 +228,10 @@ const OutputSurface = memo(function OutputSurface({
           )
         ) : null}
 
-        {!isRunning && !displayOutput ? (
+        {!isRunning && !displayOutput && !error ? (
           <div
             data-testid="output-content"
-            className="font-[family-name:var(--font-mono)] text-sm leading-6 text-paper/45"
+            className="font-[family-name:var(--font-mono)] text-sm leading-6 text-neutral-500"
           >
             Run an expression to see the transformed output here.
           </div>
@@ -252,20 +268,8 @@ const OutputSurface = memo(function OutputSurface({
 });
 
 function downloadOutput(fullOutput: string, outputFormat: OutputFormat) {
-  const blob = new Blob([fullOutput], {
-    type: "text/plain;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
   const extension = outputFormat === "props" ? "properties" : outputFormat;
-
-  anchor.href = url;
-  anchor.download = `output.${extension}`;
-  anchor.click();
-
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 0);
+  downloadTextFile(fullOutput, `output.${extension}`);
 }
 
 function engineDescription(engine: EngineType): string {
@@ -277,7 +281,9 @@ function engineDescription(engine: EngineType): string {
 export function PluckPlayground() {
   const [settings, setSettings] = useState<PlaygroundState>(createDefaultState);
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [cliCopyState, setCliCopyState] = useState<CopyState>("idle");
   const [linkCopyState, setLinkCopyState] = useState<CopyState>("idle");
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [engineSnapshot, setEngineSnapshot] = useState<EngineInitSnapshot>(
     getEngineInitSnapshot,
@@ -293,6 +299,9 @@ export function PluckPlayground() {
   >({ yq: "idle", dasel: "idle" });
 
   const validationMessageRef = useRef<HTMLParagraphElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inputScrollRef = useRef<HTMLTextAreaElement | null>(null);
+  const inputHighlightScrollRef = useRef<HTMLDivElement | null>(null);
   const outputRef = useRef<HTMLDivElement | null>(null);
   const outputScrollTopRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(false);
@@ -331,22 +340,44 @@ export function PluckPlayground() {
     [settings.engine],
   );
 
-  const runGate = useMemo(
-    () =>
-      validateRunRequest(
-        settings.engine,
-        settings.input,
-        settings.expression,
-        settings.inputFormat,
-        settings.outputFormat,
-      ),
-    [
+  const runGate = useMemo(() => {
+    const baseGate = validateRunRequest(
       settings.engine,
       settings.input,
       settings.expression,
       settings.inputFormat,
       settings.outputFormat,
-    ],
+    );
+
+    if (!baseGate.ok) {
+      return baseGate;
+    }
+
+    if (settings.engine === "dasel") {
+      return validateDaselConfiguration(
+        settings.readFlagsText,
+        settings.writeFlagsText,
+        settings.variablesText,
+      );
+    }
+
+    return baseGate;
+  }, [
+    settings.engine,
+    settings.input,
+    settings.expression,
+    settings.inputFormat,
+    settings.outputFormat,
+    settings.readFlagsText,
+    settings.variablesText,
+    settings.writeFlagsText,
+  ]);
+
+  const inputHighlightEnabled = useMemo(
+    () =>
+      settings.input.length > 0 &&
+      settings.input.length <= OUTPUT_HIGHLIGHT_THRESHOLD,
+    [settings.input],
   );
 
   const runSnapshot = useCallback(
@@ -446,18 +477,35 @@ export function PluckPlayground() {
 
       if (selectedEngineState.status !== "ready") {
         if (selectedEngineState.status === "error") {
+          try {
+            await retryEngineInit(snapshot.engine);
+          } catch (initFailure: unknown) {
+            setError(
+              initFailure instanceof Error
+                ? initFailure.message
+                : selectedEngineState.error ??
+                    getEngineInitError(snapshot.engine) ??
+                    `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
+            );
+            return;
+          }
+
+          const retriedState =
+            engineSnapshotRef.current.engines[snapshot.engine];
+          if (retriedState.status !== "ready") {
+            setError(
+              retriedState.error ??
+                getEngineInitError(snapshot.engine) ??
+                `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
+            );
+            return;
+          }
+        } else {
           setError(
-            selectedEngineState.error ??
-              getEngineInitError(snapshot.engine) ??
-              `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
+            `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
           );
           return;
         }
-
-        setError(
-          `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please wait a moment and try again.`,
-        );
-        return;
       }
 
       if (isRunningRef.current) {
@@ -509,7 +557,7 @@ export function PluckPlayground() {
       return;
     }
 
-    void initEngine(settings.engine).catch((initFailure: unknown) => {
+    void preloadAllEngines().catch((initFailure: unknown) => {
       if (!isMountedRef.current) {
         return;
       }
@@ -520,7 +568,7 @@ export function PluckPlayground() {
           : "Failed to initialize the browser engines.",
       );
     });
-  }, [hasHydratedHash, settings.engine]);
+  }, [hasHydratedHash]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -654,6 +702,29 @@ export function PluckPlayground() {
     };
   }, [linkCopyState]);
 
+  useEffect(() => {
+    if (cliCopyState === "idle") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCliCopyState("idle");
+    }, 1800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [cliCopyState]);
+
+  useEffect(() => {
+    if (runGate.ok || output.length === 0) {
+      return;
+    }
+
+    setOutput("");
+    setDurationMs(null);
+  }, [runGate.ok, output.length]);
+
   useLayoutEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputScrollTopRef.current;
@@ -668,6 +739,128 @@ export function PluckPlayground() {
       }),
     );
   }
+
+  function syncInputHighlightScroll() {
+    if (!inputScrollRef.current || !inputHighlightScrollRef.current) {
+      return;
+    }
+
+    inputHighlightScrollRef.current.scrollTop = inputScrollRef.current.scrollTop;
+    inputHighlightScrollRef.current.scrollLeft =
+      inputScrollRef.current.scrollLeft;
+  }
+
+  function applyInputText(text: string, options?: { detectFormat?: boolean }) {
+    const current = settingsRef.current;
+    const detected =
+      options?.detectFormat !== false ? detectInputFormat(text) : null;
+    let nextInputFormat = current.inputFormat;
+
+    if (detected && supportsInputFormat(current.engine, detected)) {
+      nextInputFormat = detected;
+    }
+
+    updateSettings({
+      input: text,
+      inputFormat: nextInputFormat,
+    });
+  }
+
+  async function applyUploadedFile(file: File) {
+    const text = await file.text();
+    applyInputText(text, { detectFormat: true });
+  }
+
+  function downloadInput() {
+    const current = settingsRef.current;
+    downloadTextFile(current.input, `input.${current.inputFormat}`);
+  }
+
+  async function copyCliCommand() {
+    const command = buildCliCommand(createRunSnapshot(settingsRef.current));
+    if (!command) {
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(command);
+        setCliCopyState("copied");
+        return;
+      }
+    } catch {
+      // Fall through to the legacy copy path below.
+    }
+
+    try {
+      const helper = document.createElement("textarea");
+      helper.value = command;
+      helper.setAttribute("readonly", "true");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      helper.style.pointerEvents = "none";
+      document.body.appendChild(helper);
+      helper.select();
+      const didCopy = document.execCommand("copy");
+      document.body.removeChild(helper);
+      setCliCopyState(didCopy ? "copied" : "failed");
+    } catch {
+      setCliCopyState("failed");
+    }
+  }
+
+  async function handleRetryEngine(engine: EngineType) {
+    setInitError(null);
+    setError(null);
+
+    try {
+      await retryEngineInit(engine);
+    } catch (retryFailure: unknown) {
+      setInitError(
+        retryFailure instanceof Error
+          ? retryFailure.message
+          : `Failed to reload the ${ENGINE_DISPLAY_NAMES[engine]} engine.`,
+      );
+    }
+  }
+
+  function handleInputPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pasted = event.clipboardData.getData("text");
+    if (!pasted) {
+      return;
+    }
+
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? 0;
+    const merged =
+      settingsRef.current.input.slice(0, start) +
+      pasted +
+      settingsRef.current.input.slice(end);
+    applyInputText(merged, { detectFormat: true });
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDraggingFile(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDraggingFile(false);
+  }
+
+  async function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDraggingFile(false);
+
+    const file = event.dataTransfer.files.item(0);
+    if (file) {
+      await applyUploadedFile(file);
+    }
+  }
+
 
   function applyExample(example: Example) {
     const nextState = normalizeFormatsForEngine({
@@ -845,15 +1038,8 @@ export function PluckPlayground() {
 
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
-      const snapshot = createRunSnapshot(settingsRef.current);
-      const gate = validateRunRequest(
-        snapshot.engine,
-        snapshot.input,
-        snapshot.expression,
-        snapshot.inputFormat,
-        snapshot.outputFormat,
-      );
-      if (!gate.ok) {
+
+      if (!runGate.ok) {
         validationMessageRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
@@ -861,20 +1047,26 @@ export function PluckPlayground() {
         return;
       }
 
-      if (engineSnapshotRef.current.engines[snapshot.engine].status !== "ready") {
-        void initEngine(snapshot.engine)
-          .then(() => requestRun(snapshot))
-          .catch((initFailure: unknown) => {
+      const snapshot = createRunSnapshot(settingsRef.current);
+
+      void (async () => {
+        const engineState =
+          engineSnapshotRef.current.engines[snapshot.engine];
+        if (engineState.status !== "ready") {
+          try {
+            await initEngine(snapshot.engine);
+          } catch (initFailure: unknown) {
             setError(
               initFailure instanceof Error
                 ? initFailure.message
-                : "The engine is still loading. Please try again.",
+                : `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is still loading. Please try again.`,
             );
-          });
-        return;
-      }
+            return;
+          }
+        }
 
-      void requestRun(snapshot);
+        await requestRun(snapshot);
+      })();
     }
   }
 
@@ -994,18 +1186,18 @@ export function PluckPlayground() {
         </div>
       </aside>
 
-      <div className="rounded-[2rem] border border-ink/10 bg-white/75 p-4 shadow-panel backdrop-blur sm:p-6">
-        <div className="rounded-[1.6rem] border border-ink/10 bg-paper/70 p-4 sm:p-5">
+      <div className="rounded-[2rem] border border-neutral-200 bg-white p-4 shadow-panel backdrop-blur sm:p-6">
+        <div className="rounded-[1.6rem] border border-neutral-200 bg-neutral-50/80 p-4 sm:p-5">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_10rem_10rem_auto_auto]">
             <label className="grid gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.28em] text-ink/55">
                 {settings.engine === "yq" ? "Expression" : "Selector"}
               </span>
-              <input
-                type="text"
+              <textarea
                 data-testid="expression-input"
                 maxLength={MAX_EXPRESSION_CHARS}
-                className="h-12 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 font-[family-name:var(--font-mono)] text-sm text-ink shadow-sm outline-none transition focus:border-ember/50 focus:ring-2 focus:ring-ember/30"
+                rows={2}
+                className="min-h-12 w-full resize-y rounded-2xl border border-neutral-200 bg-white px-4 py-3 font-[family-name:var(--font-mono)] text-sm text-neutral-900 shadow-sm outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-200"
                 value={settings.expression}
                 placeholder={ENGINE_PLACEHOLDERS[settings.engine]}
                 onChange={(event) =>
@@ -1094,12 +1286,25 @@ export function PluckPlayground() {
                 type="button"
                 data-testid="run-button"
                 disabled={!isReady || isRunning || !runGate.ok}
-                className="min-h-12 rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-ember disabled:cursor-not-allowed disabled:bg-ink/50"
+                className="min-h-12 rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:bg-neutral-400"
                 onClick={() =>
                   void requestRun(createRunSnapshot(settingsRef.current))
                 }
               >
                 {isRunning ? "Running…" : "Run"}
+              </button>
+              <button
+                type="button"
+                data-testid="copy-cli-button"
+                disabled={!buildCliCommand(createRunSnapshot(settings))}
+                className="min-h-12 rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void copyCliCommand()}
+              >
+                {cliCopyState === "copied"
+                  ? "CLI copied"
+                  : cliCopyState === "failed"
+                    ? "Copy failed"
+                    : "Copy CLI"}
               </button>
             </div>
 
@@ -1134,22 +1339,40 @@ export function PluckPlayground() {
               {ENGINE_OVERALL_STATUS_LABELS[engineSnapshot.overallStatus]}
             </div>
 
+            <div
+              data-testid="engine-versions"
+              className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
+            >
+              yq {ENGINE_VERSIONS.yq} · dasel {ENGINE_VERSIONS.dasel}
+            </div>
+
             {(["yq", "dasel"] as const).map((engine) => (
-              <div
-                key={engine}
-                data-testid={`engine-status-${engine}`}
-                className="rounded-full border border-ink/10 bg-white px-3 py-1 text-ink/70"
-              >
-                <span className="font-semibold text-ink">
-                  {ENGINE_DISPLAY_NAMES[engine]}:
-                </span>{" "}
-                {engineBadgeText(
-                  engine,
-                  settings,
-                  engineSnapshot,
-                  isRunning,
-                  engineEvalBadge,
-                )}
+              <div key={engine} className="flex flex-wrap items-center gap-2">
+                <div
+                  data-testid={`engine-status-${engine}`}
+                  className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-neutral-600"
+                >
+                  <span className="font-semibold text-neutral-900">
+                    {ENGINE_DISPLAY_NAMES[engine]}:
+                  </span>{" "}
+                  {engineBadgeText(
+                    engine,
+                    settings,
+                    engineSnapshot,
+                    isRunning,
+                    engineEvalBadge,
+                  )}
+                </div>
+                {engineSnapshot.engines[engine].status === "error" ? (
+                  <button
+                    type="button"
+                    data-testid={`retry-engine-${engine}`}
+                    className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50"
+                    onClick={() => void handleRetryEngine(engine)}
+                  >
+                    Retry
+                  </button>
+                ) : null}
               </div>
             ))}
 
@@ -1329,25 +1552,93 @@ export function PluckPlayground() {
             {shouldWarnLargeInput(settings.input) ? (
               <p
                 data-testid="input-large-warning"
-                className="text-xs leading-5 text-amber-900"
+                className="text-xs leading-5 text-amber-800"
               >
                 {VALIDATION_MESSAGES.inputLargeWarning}
               </p>
             ) : null}
-            <textarea
-              data-testid="input-editor"
-              className="min-h-[24rem] rounded-[1.5rem] border border-ink/10 bg-[#fffdfa] px-4 py-4 font-[family-name:var(--font-mono)] text-sm leading-6 text-ink shadow-inner outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
-              value={settings.input}
-              placeholder={
-                settings.engine === "yq"
-                  ? "Paste YAML, JSON, XML, CSV, or TOML here."
-                  : "Paste YAML, JSON, XML, CSV, TOML, INI, or HCL here."
-              }
-              onChange={(event) =>
-                updateSettings({ input: event.target.value })
-              }
-              spellCheck={false}
+            {isInputOverHardLimit(settings.input) ? (
+              <p
+                data-testid="input-hard-limit-warning"
+                className="text-xs leading-5 text-red-700"
+              >
+                {VALIDATION_MESSAGES.inputTooLarge} ({MAX_INPUT_BYTES.toLocaleString()} byte limit).
+              </p>
+            ) : null}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="sr-only"
+              accept=".yaml,.yml,.json,.xml,.csv,.toml,.ini,.hcl,.properties,.txt,text/*"
+              onChange={(event) => {
+                const file = event.target.files?.item(0);
+                if (file) {
+                  void applyUploadedFile(file);
+                }
+                event.target.value = "";
+              }}
             />
+            <div
+              className={`relative min-h-[24rem] overflow-hidden rounded-[1.5rem] border shadow-inner transition ${
+                isDraggingFile
+                  ? "border-neutral-400 bg-neutral-50 ring-2 ring-neutral-200"
+                  : "border-neutral-200 bg-white"
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(event) => void handleDrop(event)}
+            >
+              {inputHighlightEnabled ? (
+                <div
+                  ref={inputHighlightScrollRef}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 overflow-auto px-4 py-4"
+                >
+                  <InputSyntax
+                    code={settings.input}
+                    inputFormat={settings.inputFormat}
+                  />
+                </div>
+              ) : null}
+              <textarea
+                ref={inputScrollRef}
+                data-testid="input-editor"
+                className={`relative z-10 min-h-[24rem] w-full resize-y px-4 py-4 font-[family-name:var(--font-mono)] text-sm leading-6 outline-none transition focus:ring-2 focus:ring-neutral-200 ${
+                  inputHighlightEnabled
+                    ? "bg-transparent text-transparent caret-neutral-900 selection:bg-neutral-200/80"
+                    : "bg-white text-neutral-900 focus:border-neutral-400"
+                }`}
+                value={settings.input}
+                placeholder={
+                  settings.engine === "yq"
+                    ? "Paste YAML, JSON, XML, CSV, or TOML here."
+                    : "Paste YAML, JSON, XML, CSV, TOML, INI, or HCL here."
+                }
+                onChange={(event) => applyInputText(event.target.value)}
+                onPaste={handleInputPaste}
+                onScroll={syncInputHighlightScroll}
+                spellCheck={false}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-testid="open-file-button"
+                className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Open file
+              </button>
+              <button
+                type="button"
+                data-testid="download-input-button"
+                disabled={!settings.input}
+                className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={downloadInput}
+              >
+                Download input
+              </button>
+            </div>
             {shareWarning ? (
               <div
                 data-testid="share-warning"

@@ -505,6 +505,24 @@ export function getEngineInitError(engine?: EngineType): string | null {
   return null;
 }
 
+export async function preloadAllEngines(): Promise<void> {
+  await Promise.all(ENGINE_TYPES.map((engine) => initEngine(engine)));
+}
+
+export async function retryEngineInit(engine: EngineType): Promise<void> {
+  const state = engineStates[engine];
+  clearWorker(engine);
+  clearPendingEvaluationTimeouts(engine);
+  state.error = null;
+  state.initPromise = null;
+  state.initPromiseReject = null;
+  state.initPromiseResolve = null;
+  state.initStarted = false;
+  state.status = "idle";
+  notifyInitListeners();
+  await initEngine(engine);
+}
+
 export async function initEngine(engine: EngineType): Promise<void> {
   if (typeof window === "undefined") {
     throw new Error(
