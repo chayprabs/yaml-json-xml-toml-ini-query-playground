@@ -37,8 +37,14 @@ jobs:
       - name: TypeScript type check
         run: npm run typecheck
 
+      - name: Go unit tests
+        run: npm run test:go
+
       - name: Unit tests
         run: npm run test:unit
+
+      - name: Prettier check
+        run: npm run format:check
 
       - name: ESLint
         run: npm run lint

@@ -1568,6 +1568,7 @@ export function PluckPlayground() {
             <input
               ref={fileInputRef}
               type="file"
+              data-testid="file-input"
               className="sr-only"
               accept=".yaml,.yml,.json,.xml,.csv,.toml,.ini,.hcl,.properties,.txt,text/*"
               onChange={(event) => {
