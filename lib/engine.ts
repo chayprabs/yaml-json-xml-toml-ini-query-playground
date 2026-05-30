@@ -166,9 +166,7 @@ function buildSnapshot(): EngineInitSnapshot {
       ? "ready"
       : statuses.some(
             (status) =>
-              status !== "idle" &&
-              status !== "ready" &&
-              status !== "error",
+              status !== "idle" && status !== "ready" && status !== "error",
           )
         ? "loading"
         : "idle";

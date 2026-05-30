@@ -30,7 +30,10 @@ export function detectInputFormat(text: string): InputFormat | null {
   }
 
   if (/^resource\s+"/m.test(sample) || /^[a-zA-Z_][\w-]*\s*\{/m.test(sample)) {
-    if (sample.includes("=") && (sample.includes("{") || sample.includes('"'))) {
+    if (
+      sample.includes("=") &&
+      (sample.includes("{") || sample.includes('"'))
+    ) {
       return "hcl";
     }
   }

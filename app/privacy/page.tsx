@@ -10,7 +10,9 @@ export default function PrivacyPage() {
   return (
     <LegalLayout title="Privacy policy">
       <section>
-        <h2 className="text-lg font-semibold text-neutral-900">Data we collect</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">
+          Data we collect
+        </h2>
         <p className="mt-2">
           None. Pluck does not collect, store, or transmit any personal data,
           usage data, or document content.
@@ -52,12 +54,10 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-lg font-semibold text-neutral-900">
-          Disclaimer
-        </h2>
+        <h2 className="text-lg font-semibold text-neutral-900">Disclaimer</h2>
         <p className="mt-2">
-          This notice describes how Pluck is designed to operate. It is not legal
-          advice. Use the tool at your own risk and do not rely on it for
+          This notice describes how Pluck is designed to operate. It is not
+          legal advice. Use the tool at your own risk and do not rely on it for
           compliance decisions without independent review.
         </p>
       </section>

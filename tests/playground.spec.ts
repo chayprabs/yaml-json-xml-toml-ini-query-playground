@@ -11,8 +11,9 @@ async function waitForPlaygroundReady(
   });
 
   const daselSelected =
-    (await page.getByTestId("engine-toggle-dasel").getAttribute("aria-pressed")) ===
-    "true";
+    (await page
+      .getByTestId("engine-toggle-dasel")
+      .getAttribute("aria-pressed")) === "true";
   const activeEngine = daselSelected ? "dasel" : "yq";
 
   await expect(page.getByTestId(`engine-status-${activeEngine}`)).toContainText(
@@ -427,8 +428,10 @@ test("truncates extremely large output and offers a full-result download", async
   await setAutoRun(page, false);
 
   const largeValue = await page.evaluate(() =>
-    Array.from({ length: 55_000 }, () =>
-      "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)],
+    Array.from(
+      { length: 55_000 },
+      () =>
+        "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)],
     ).join(""),
   );
   await page
@@ -440,7 +443,10 @@ test("truncates extremely large output and offers a full-result download", async
   await expect
     .poll(
       async () =>
-        page.getByTestId("share-warning").textContent().catch(() => ""),
+        page
+          .getByTestId("share-warning")
+          .textContent()
+          .catch(() => ""),
       { timeout: PLAYGROUND_READY_TIMEOUT_MS },
     )
     .toContain("Workspace is too large to encode in a URL");

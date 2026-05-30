@@ -14,17 +14,17 @@ Paste YAML, JSON, XML, CSV, TOML, INI, or HCL. Run <a href="https://mikefarah.gi
 
 ## Features (complete product)
 
-| Category | What you get |
-|----------|----------------|
-| **Engines** | yq (expressions) + dasel (selectors) in WebAssembly, each in its own worker |
-| **Formats** | YAML, JSON, XML, CSV, TOML; dasel adds INI & HCL; yq adds Properties output |
-| **Input** | Paste, **drag-and-drop**, or **open file** (up to 2 MB); **syntax highlighting**; format **auto-detect** |
-| **Query** | **Multiline** expression/selector field; presets; engine toggles; dasel flags & variables |
-| **Output** | Highlighted result, copy, download; 50k preview cap with full download |
-| **Share** | URL hash workspace (LZ-compressed, 4k guard); copy link |
-| **CLI** | **Copy CLI command** equivalent for yq/dasel |
-| **Reliability** | 8s timeout, worker restart, **Retry** on engine load failure, both engines **preloaded** |
-| **Privacy** | No upload, no analytics; CSP + static export only |
+| Category        | What you get                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------- |
+| **Engines**     | yq (expressions) + dasel (selectors) in WebAssembly, each in its own worker                              |
+| **Formats**     | YAML, JSON, XML, CSV, TOML; dasel adds INI & HCL; yq adds Properties output                              |
+| **Input**       | Paste, **drag-and-drop**, or **open file** (up to 2 MB); **syntax highlighting**; format **auto-detect** |
+| **Query**       | **Multiline** expression/selector field; presets; engine toggles; dasel flags & variables                |
+| **Output**      | Highlighted result, copy, download; 50k preview cap with full download                                   |
+| **Share**       | URL hash workspace (LZ-compressed, 4k guard); copy link                                                  |
+| **CLI**         | **Copy CLI command** equivalent for yq/dasel                                                             |
+| **Reliability** | 8s timeout, worker restart, **Retry** on engine load failure, both engines **preloaded**                 |
+| **Privacy**     | No upload, no analytics; CSP + static export only                                                        |
 
 ---
 
@@ -56,24 +56,24 @@ npx wrangler pages deploy out/ --project-name=pluck   # optional
 
 ## Limits
 
-| Item | Value |
-|------|------:|
-| Input max | 2 MB |
-| Input warning | 500 KB |
-| Expression max | 2,000 chars |
-| Evaluation timeout | 8 s |
-| URL hash max | 4,000 chars encoded |
+| Item               |               Value |
+| ------------------ | ------------------: |
+| Input max          |                2 MB |
+| Input warning      |              500 KB |
+| Expression max     |         2,000 chars |
+| Evaluation timeout |                 8 s |
+| URL hash max       | 4,000 chars encoded |
 
 ---
 
 ## Scripts & CI
 
-| Script | Purpose |
-|--------|---------|
-| `npm run build` | WASM + static site |
-| `npm run test:unit` | Node unit tests |
-| `npm run test:go` | Go bridge + WASM tests |
-| `npm test` | Playwright E2E (Chromium) |
+| Script                 | Purpose                                         |
+| ---------------------- | ----------------------------------------------- |
+| `npm run build`        | WASM + static site                              |
+| `npm run test:unit`    | Node unit tests                                 |
+| `npm run test:go`      | Go bridge + WASM tests                          |
+| `npm test`             | Playwright E2E (Chromium)                       |
 | `npm run phase1:audit` | 30-case yq engine matrix (needs running server) |
 
 CI on every push to `main`: Go verify → WASM build → typecheck → Go tests → unit tests → Prettier → ESLint → `next build` → audit → Playwright.

@@ -1,5 +1,4 @@
-const PANIC_LINE =
-  /^(goroutine|panic:|runtime\/|github\.com\/|\s*at\s+)/iu;
+const PANIC_LINE = /^(goroutine|panic:|runtime\/|github\.com\/|\s*at\s+)/iu;
 const ABS_PATH = /(?:^|\s)(\/(?:usr|home|tmp|var|opt|workspace)\/[^\s]+)/gu;
 const WASM_ADDR = /\b0x[0-9a-f]{4,}\b/giu;
 const MODULE_VERSION = /@[vV]?\d+\.\d+\.\d+[^\s]*/gu;

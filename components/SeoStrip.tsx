@@ -12,8 +12,8 @@ export function SeoStrip() {
           server upload.
         </p>
         <p className="mt-1 text-sm leading-snug text-neutral-600">
-          Paste your config below, pick an engine and output format, then hit Run
-          — everything stays in WebAssembly on your device.
+          Paste your config below, pick an engine and output format, then hit
+          Run — everything stays in WebAssembly on your device.
         </p>
       </div>
     </section>

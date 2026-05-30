@@ -144,7 +144,8 @@ graceful_timeout = 30
   {
     id: "toml-json",
     label: "TOML to JSON",
-    description: "Convert TOML configuration into JSON with the selector engine.",
+    description:
+      "Convert TOML configuration into JSON with the selector engine.",
     engine: "dasel",
     expression: ".",
     inputFormat: "toml",

@@ -1,7 +1,4 @@
-import {
-  getDefaultExample,
-  getExamplesForEngine,
-} from "@/lib/examples";
+import { getDefaultExample, getExamplesForEngine } from "@/lib/examples";
 import {
   isEngineType,
   isInputFormat,
@@ -18,7 +15,11 @@ import { canAutoRunSnapshot, validateRunRequest } from "@/lib/validation";
 
 export type { Example } from "@/lib/examples";
 export type { PlaygroundState, RunSnapshot } from "@/lib/playground-types";
-export { getDefaultExample, getExamplesForEngine, examples } from "@/lib/examples";
+export {
+  getDefaultExample,
+  getExamplesForEngine,
+  examples,
+} from "@/lib/examples";
 export {
   HASH_SYNC_DELAY_MS,
   MAX_SHAREABLE_HASH_LENGTH,
@@ -50,7 +51,7 @@ export const ENGINE_SYNTAX_HINTS: Record<EngineType, SyntaxHint> = {
   dasel: {
     docsHref: "https://daseldocs.tomwright.me/",
     docsLabel: "dasel docs ↗",
-    example: "server.http_port or search(key == \"val\")",
+    example: 'server.http_port or search(key == "val")',
     prefix: "Try",
   },
 };
@@ -259,10 +260,7 @@ export function createEngineEvaluateOptions(
       prettyPrint: supportsPrettyPrint(snapshot.engine, snapshot.outputFormat)
         ? snapshot.prettyPrint
         : false,
-      unwrapScalar: supportsUnwrapScalar(
-        snapshot.engine,
-        snapshot.outputFormat,
-      )
+      unwrapScalar: supportsUnwrapScalar(snapshot.engine, snapshot.outputFormat)
         ? snapshot.unwrapScalar
         : false,
     };

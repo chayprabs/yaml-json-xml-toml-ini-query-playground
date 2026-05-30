@@ -11,9 +11,7 @@ export default function TermsPage() {
   return (
     <LegalLayout title="Terms and conditions">
       <section>
-        <h2 className="text-lg font-semibold text-neutral-900">
-          Agreement
-        </h2>
+        <h2 className="text-lg font-semibold text-neutral-900">Agreement</h2>
         <p className="mt-2">
           By using Pluck you agree to these terms. If you do not agree, do not
           use the tool.
@@ -26,8 +24,8 @@ export default function TermsPage() {
         <p className="mt-2">
           Pluck is provided free of charge and &quot;as is&quot;, without
           warranties of any kind, express or implied, including merchantability,
-          fitness for a particular purpose, and non-infringement. The software is
-          licensed under the MIT License where applicable.
+          fitness for a particular purpose, and non-infringement. The software
+          is licensed under the MIT License where applicable.
         </p>
       </section>
       <section>

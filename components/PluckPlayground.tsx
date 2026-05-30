@@ -43,10 +43,7 @@ import {
   ENGINE_STATUS_LABELS,
   supportsInputFormat,
 } from "@/lib/engine-types";
-import {
-  OUTPUT_HIGHLIGHT_THRESHOLD,
-  prepareOutput,
-} from "@/lib/output";
+import { OUTPUT_HIGHLIGHT_THRESHOLD, prepareOutput } from "@/lib/output";
 import {
   AUTO_RUN_DELAY_MS,
   ENGINE_PLACEHOLDERS,
@@ -483,9 +480,9 @@ export function PluckPlayground() {
             setError(
               initFailure instanceof Error
                 ? initFailure.message
-                : selectedEngineState.error ??
+                : (selectedEngineState.error ??
                     getEngineInitError(snapshot.engine) ??
-                    `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`,
+                    `The ${ENGINE_DISPLAY_NAMES[snapshot.engine]} engine is unavailable right now.`),
             );
             return;
           }
@@ -745,7 +742,8 @@ export function PluckPlayground() {
       return;
     }
 
-    inputHighlightScrollRef.current.scrollTop = inputScrollRef.current.scrollTop;
+    inputHighlightScrollRef.current.scrollTop =
+      inputScrollRef.current.scrollTop;
     inputHighlightScrollRef.current.scrollLeft =
       inputScrollRef.current.scrollLeft;
   }
@@ -860,7 +858,6 @@ export function PluckPlayground() {
       await applyUploadedFile(file);
     }
   }
-
 
   function applyExample(example: Example) {
     const nextState = normalizeFormatsForEngine({
@@ -1050,8 +1047,7 @@ export function PluckPlayground() {
       const snapshot = createRunSnapshot(settingsRef.current);
 
       void (async () => {
-        const engineState =
-          engineSnapshotRef.current.engines[snapshot.engine];
+        const engineState = engineSnapshotRef.current.engines[snapshot.engine];
         if (engineState.status !== "ready") {
           try {
             await initEngine(snapshot.engine);
@@ -1407,114 +1403,124 @@ export function PluckPlayground() {
             />
           </div>
 
-          <details className="mt-4 rounded-2xl border border-ink/10 bg-white/50 p-4" open>
+          <details
+            className="mt-4 rounded-2xl border border-ink/10 bg-white/50 p-4"
+            open
+          >
             <summary className="cursor-pointer text-sm font-semibold text-ink">
               Engine controls
             </summary>
             <div className="mt-3 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-            {settings.engine === "yq" ? (
-              <>
-                <ToggleOption
-                  checked={settings.unwrapScalar}
-                  description="Print scalar values without quotes when the output format supports it."
-                  disabled={
-                    !supportsUnwrapScalar(
-                      settings.engine,
-                      settings.outputFormat,
-                    )
-                  }
-                  label="Unwrap scalar"
-                  onChange={(unwrapScalar) => updateSettings({ unwrapScalar })}
-                  testId="unwrap-scalar-toggle"
-                />
-                <ToggleOption
-                  checked={settings.noDoc}
-                  description="Suppress YAML document separators when multiple documents are emitted."
-                  disabled={
-                    !supportsNoDoc(settings.engine, settings.outputFormat)
-                  }
-                  label="No document separators"
-                  onChange={(noDoc) => updateSettings({ noDoc })}
-                  testId="no-doc-toggle"
-                />
-                <ToggleOption
-                  checked={settings.prettyPrint}
-                  description="Pretty-print JSON output (indentation and line breaks)."
-                  disabled={
-                    !supportsPrettyPrint(settings.engine, settings.outputFormat)
-                  }
-                  label="Pretty print"
-                  onChange={(prettyPrint) => updateSettings({ prettyPrint })}
-                  testId="pretty-print-toggle"
-                />
-              </>
-            ) : (
-              <>
-                <ToggleOption
-                  checked={settings.returnRoot}
-                  description="Return the modified root document after an assignment selector instead of only the selected node."
-                  label="Return modified root"
-                  onChange={(returnRoot) => updateSettings({ returnRoot })}
-                  testId="return-root-toggle"
-                />
-                <ToggleOption
-                  checked={settings.unstable}
-                  description="Experimental selector features may change behaviour between releases."
-                  label="Unstable selectors (warning)"
-                  onChange={(unstable) => updateSettings({ unstable })}
-                  testId="unstable-toggle"
-                />
-                <div className="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
-                  <p className="text-sm font-semibold text-ink">Variables</p>
-                  <p className="mt-1 text-xs leading-5 text-ink/65">
-                    One variable per line, such as{" "}
-                    <code>{'cfg=json:{"region":"ap-south-1"}'}</code> or{" "}
-                    <code>env=dasel:production</code>.
-                  </p>
-                  <textarea
-                    data-testid="variables-input"
-                    className="mt-3 min-h-24 w-full rounded-xl border border-ink/10 bg-paper/70 px-3 py-2 font-[family-name:var(--font-mono)] text-xs text-ink outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
-                    value={settings.variablesText}
-                    placeholder={'cfg=json:{"region":"ap-south-1"}'}
-                    onChange={(event) =>
-                      updateSettings({ variablesText: event.target.value })
+              {settings.engine === "yq" ? (
+                <>
+                  <ToggleOption
+                    checked={settings.unwrapScalar}
+                    description="Print scalar values without quotes when the output format supports it."
+                    disabled={
+                      !supportsUnwrapScalar(
+                        settings.engine,
+                        settings.outputFormat,
+                      )
                     }
-                    spellCheck={false}
-                  />
-                </div>
-                <div className="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
-                  <p className="text-sm font-semibold text-ink">Read flags</p>
-                  <p className="mt-1 text-xs leading-5 text-ink/65">
-                    Parser flags such as <code>csv-delimiter=;</code> or{" "}
-                    <code>xml-mode=structured</code>.
-                  </p>
-                  <input
-                    data-testid="read-flags-input"
-                    className="mt-3 w-full rounded-xl border border-ink/10 bg-paper/70 px-3 py-2 font-[family-name:var(--font-mono)] text-xs text-ink outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
-                    value={settings.readFlagsText}
-                    placeholder="csv-delimiter=;"
-                    onChange={(event) =>
-                      updateSettings({ readFlagsText: event.target.value })
+                    label="Unwrap scalar"
+                    onChange={(unwrapScalar) =>
+                      updateSettings({ unwrapScalar })
                     }
+                    testId="unwrap-scalar-toggle"
                   />
-                </div>
-                <div className="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
-                  <p className="text-sm font-semibold text-ink">Write flags</p>
-                  <p className="mt-1 text-xs leading-5 text-ink/65">
-                    Writer flags such as <code>hcl-block-format=array</code>.
-                  </p>
-                  <input
-                    data-testid="write-flags-input"
-                    className="mt-3 w-full rounded-xl border border-ink/10 bg-paper/70 px-3 py-2 font-[family-name:var(--font-mono)] text-xs text-ink outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
-                    value={settings.writeFlagsText}
-                    placeholder="hcl-block-format=array"
-                    onChange={(event) =>
-                      updateSettings({ writeFlagsText: event.target.value })
+                  <ToggleOption
+                    checked={settings.noDoc}
+                    description="Suppress YAML document separators when multiple documents are emitted."
+                    disabled={
+                      !supportsNoDoc(settings.engine, settings.outputFormat)
                     }
+                    label="No document separators"
+                    onChange={(noDoc) => updateSettings({ noDoc })}
+                    testId="no-doc-toggle"
                   />
-                </div>
-              </>
-            )}
+                  <ToggleOption
+                    checked={settings.prettyPrint}
+                    description="Pretty-print JSON output (indentation and line breaks)."
+                    disabled={
+                      !supportsPrettyPrint(
+                        settings.engine,
+                        settings.outputFormat,
+                      )
+                    }
+                    label="Pretty print"
+                    onChange={(prettyPrint) => updateSettings({ prettyPrint })}
+                    testId="pretty-print-toggle"
+                  />
+                </>
+              ) : (
+                <>
+                  <ToggleOption
+                    checked={settings.returnRoot}
+                    description="Return the modified root document after an assignment selector instead of only the selected node."
+                    label="Return modified root"
+                    onChange={(returnRoot) => updateSettings({ returnRoot })}
+                    testId="return-root-toggle"
+                  />
+                  <ToggleOption
+                    checked={settings.unstable}
+                    description="Experimental selector features may change behaviour between releases."
+                    label="Unstable selectors (warning)"
+                    onChange={(unstable) => updateSettings({ unstable })}
+                    testId="unstable-toggle"
+                  />
+                  <div className="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
+                    <p className="text-sm font-semibold text-ink">Variables</p>
+                    <p className="mt-1 text-xs leading-5 text-ink/65">
+                      One variable per line, such as{" "}
+                      <code>{'cfg=json:{"region":"ap-south-1"}'}</code> or{" "}
+                      <code>env=dasel:production</code>.
+                    </p>
+                    <textarea
+                      data-testid="variables-input"
+                      className="mt-3 min-h-24 w-full rounded-xl border border-ink/10 bg-paper/70 px-3 py-2 font-[family-name:var(--font-mono)] text-xs text-ink outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
+                      value={settings.variablesText}
+                      placeholder={'cfg=json:{"region":"ap-south-1"}'}
+                      onChange={(event) =>
+                        updateSettings({ variablesText: event.target.value })
+                      }
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
+                    <p className="text-sm font-semibold text-ink">Read flags</p>
+                    <p className="mt-1 text-xs leading-5 text-ink/65">
+                      Parser flags such as <code>csv-delimiter=;</code> or{" "}
+                      <code>xml-mode=structured</code>.
+                    </p>
+                    <input
+                      data-testid="read-flags-input"
+                      className="mt-3 w-full rounded-xl border border-ink/10 bg-paper/70 px-3 py-2 font-[family-name:var(--font-mono)] text-xs text-ink outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
+                      value={settings.readFlagsText}
+                      placeholder="csv-delimiter=;"
+                      onChange={(event) =>
+                        updateSettings({ readFlagsText: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-ink/10 bg-white/80 px-4 py-3">
+                    <p className="text-sm font-semibold text-ink">
+                      Write flags
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-ink/65">
+                      Writer flags such as <code>hcl-block-format=array</code>.
+                    </p>
+                    <input
+                      data-testid="write-flags-input"
+                      className="mt-3 w-full rounded-xl border border-ink/10 bg-paper/70 px-3 py-2 font-[family-name:var(--font-mono)] text-xs text-ink outline-none transition focus:border-ember/40 focus:ring-2 focus:ring-ember/20"
+                      value={settings.writeFlagsText}
+                      placeholder="hcl-block-format=array"
+                      onChange={(event) =>
+                        updateSettings({ writeFlagsText: event.target.value })
+                      }
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </details>
         </div>
@@ -1562,7 +1568,8 @@ export function PluckPlayground() {
                 data-testid="input-hard-limit-warning"
                 className="text-xs leading-5 text-red-700"
               >
-                {VALIDATION_MESSAGES.inputTooLarge} ({MAX_INPUT_BYTES.toLocaleString()} byte limit).
+                {VALIDATION_MESSAGES.inputTooLarge} (
+                {MAX_INPUT_BYTES.toLocaleString()} byte limit).
               </p>
             ) : null}
             <input
@@ -1701,7 +1708,6 @@ export function PluckPlayground() {
               outputScrollTopRef={outputScrollTopRef}
               truncated={preparedOutput.truncated}
             />
-
           </div>
         </div>
       </div>

@@ -9,7 +9,9 @@ export default function CreditsPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       <article className="rounded-[2rem] border border-ink/10 bg-white/80 p-8 shadow-panel backdrop-blur">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink">Credits</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-ink">
+          Credits
+        </h1>
         <ul className="mt-8 list-disc space-y-4 pl-5 text-sm leading-7 text-ink/80">
           <li>
             Expression engine:{" "}

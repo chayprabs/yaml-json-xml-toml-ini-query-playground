@@ -290,9 +290,7 @@ async function initEngine(): Promise<void> {
     await Promise.race([
       waitForEvaluator(),
       runPromise.then(() => {
-        throw new Error(
-          "Engine failed to load. Please refresh the page.",
-        );
+        throw new Error("Engine failed to load. Please refresh the page.");
       }),
     ]);
 
