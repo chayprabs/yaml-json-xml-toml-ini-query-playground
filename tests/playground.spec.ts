@@ -525,3 +525,76 @@ test("privacy notice and legal routes are reachable", async ({ page }) => {
   await expect(page.getByRole("link", { name: /yq/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /dasel/i })).toBeVisible();
 });
+
+test("shows engine version badges after engines are ready", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForPlaygroundReady(page);
+
+  const versions = page.getByTestId("engine-versions");
+  await expect(versions).toBeVisible();
+  await expect(versions).toContainText(/yq/i);
+  await expect(versions).toContainText(/dasel/i);
+});
+
+test("copy CLI button copies a non-empty command", async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(
+    browserName === "webkit",
+    "Clipboard read permissions differ in WebKit",
+  );
+
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await waitForPlaygroundReady(page);
+  await setAutoRun(page, false);
+
+  await page.getByTestId("input-editor").fill("name: pluck\n");
+  await page.getByTestId("expression-input").fill(".name");
+  await page.getByTestId("copy-cli-button").click();
+
+  await expect(page.getByTestId("copy-cli-button")).toContainText(/copied/i);
+
+  const clipboardText = await page.evaluate(() =>
+    navigator.clipboard.readText(),
+  );
+  expect(clipboardText.length).toBeGreaterThan(10);
+  expect(clipboardText.toLowerCase()).toMatch(/yq|dasel/u);
+});
+
+test("open file loads content into the input editor", async ({ page }) => {
+  await page.goto("/");
+  await waitForPlaygroundReady(page);
+  await setAutoRun(page, false);
+
+  await page.getByTestId("file-input").setInputFiles({
+    name: "sample.yaml",
+    mimeType: "text/yaml",
+    buffer: Buffer.from("items:\n  - alpha\n  - beta\n"),
+  });
+
+  await expect(page.getByTestId("input-editor")).toHaveValue(/alpha/u);
+});
+
+test("download input offers a file with the current editor content", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await waitForPlaygroundReady(page);
+  await setAutoRun(page, false);
+
+  await page.getByTestId("input-editor").fill("hello: world\n");
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("download-input-button").click(),
+  ]);
+
+  expect(await download.failure()).toBeNull();
+  const path = await download.path();
+  expect(path).toBeTruthy();
+});

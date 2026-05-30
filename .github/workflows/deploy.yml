@@ -5,31 +5,52 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
-    if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip deploy when Cloudflare secrets are not configured
+        id: cloudflare
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare secrets not set; skipping Pages deploy."
+          fi
+
       - uses: actions/setup-go@v5
+        if: steps.cloudflare.outputs.enabled == 'true'
         with:
           go-version: "1.25.0"
 
       - uses: actions/setup-node@v4
+        if: steps.cloudflare.outputs.enabled == 'true'
         with:
           node-version: "18"
           cache: npm
 
       - name: Build WASM engines
+        if: steps.cloudflare.outputs.enabled == 'true'
         run: bash scripts/build-engine.sh
 
       - name: Install and build static site
+        if: steps.cloudflare.outputs.enabled == 'true'
         run: npm ci && GITHUB_ACTIONS=false npx next build
 
       - name: Deploy to Cloudflare Pages
+        if: steps.cloudflare.outputs.enabled == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
